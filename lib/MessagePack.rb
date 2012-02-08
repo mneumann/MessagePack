@@ -10,4 +10,8 @@ module MessagePack
     raise unless _each(str, &block)
   end
   module_function :each
+
+  def self.include_path
+    File.join(File.dirname(__FILE__), "../include")
+  end
 end
