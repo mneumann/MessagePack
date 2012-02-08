@@ -5,6 +5,10 @@
 #include "ruby/st.h"
 #include <assert.h>
 
+static ID to_msgpack_obj;
+static ID to_msgpack;
+static VALUE mMessagePack;
+
 struct hash_iter_ctx
 {
   MessagePack::Packer *packer;
@@ -76,12 +80,27 @@ recurse(MessagePack::Packer *t, VALUE obj, int depth)
       }
       break;
     default:
-      if (!rb_respond_to(obj, rb_intern("to_msgpack")))
-        rb_raise(rb_eArgError, "Unsupported type (cannot msgpack object)");
 
-      VALUE str = rb_funcall(obj, rb_intern("to_msgpack"), 0);
-      Check_Type(str, T_STRING);
-      t->get_buffer()->write(RSTRING_PTR(str), RSTRING_LEN(str));
+      if (rb_respond_to(obj, to_msgpack_obj))
+      {
+        //
+        // Try first method #to_msgpack_obj, which returns an object
+        //
+        recurse(t, rb_funcall(obj, to_msgpack_obj, 0), depth-1);
+      }
+      else if (rb_respond_to(obj, to_msgpack))
+      {
+        //
+	// Then try #to_msgpack, which returns a string in msgpack format
+	//
+        VALUE str = rb_funcall(obj, to_msgpack, 0);
+        Check_Type(str, T_STRING);
+        t->get_buffer()->write(RSTRING_PTR(str), RSTRING_LEN(str));
+      }
+      else
+      {
+        rb_raise(rb_eArgError, "Unsupported type (cannot msgpack object)");
+      }
   };
 }
 
@@ -243,7 +262,10 @@ Unpacker_s_load(VALUE self, VALUE str)
 extern "C"
 void Init_MessagePackExt()
 {
-  VALUE mMessagePack = rb_define_module("MessagePack");
+  to_msgpack_obj = rb_intern("to_msgpack_obj");
+  to_msgpack = rb_intern("to_msgpack");
+
+  mMessagePack = rb_define_module("MessagePack");
   rb_define_module_function(mMessagePack, "_each", (VALUE (*)(...))Unpacker_s_each, 1);
   rb_define_module_function(mMessagePack, "load", (VALUE (*)(...))Unpacker_s_load, 1);
   rb_define_module_function(mMessagePack, "_dump", (VALUE (*)(...))Packer_s__dump, 3);
