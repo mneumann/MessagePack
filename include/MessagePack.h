@@ -572,7 +572,7 @@ namespace MessagePack
     {
       if (n > _pos) throw "cannot unread more than read";
       _pos -= n;
-      if (fseek(_file, _pos, SEEK_SET) != 0)
+      if (fseek(_file, -n, SEEK_CUR) != 0)
       {
         throw "fseek failed";
       }
