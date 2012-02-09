@@ -31,13 +31,17 @@
 namespace MessagePack
 {
 
-  struct Buffer
+  class WriteBuffer
   {
+    private:
+
     char *_data;
     size_t _write_pos;
     size_t _capacity;
 
-    Buffer(size_t initial_size)
+    public:
+
+    WriteBuffer(size_t initial_size)
     {
       if (initial_size < 16) initial_size = 16;
       _data = (char*)malloc(initial_size);
@@ -48,7 +52,7 @@ namespace MessagePack
       _capacity = initial_size;
     }
 
-    ~Buffer()
+    ~WriteBuffer()
     {
       if (_data) {
         free(_data);
@@ -69,26 +73,6 @@ namespace MessagePack
     void reset()
     {
         _write_pos = 0;
-    }
-
-    void resize(size_t req)
-    {
-      size_t new_size = _capacity * 2;
-      while (req > new_size) new_size *= 2;
-      char *d = (char*)realloc(_data, new_size); 
-      if (!d) {
-        throw "insufficient memory";
-      }
-      _data = d;
-    }
-
-    void needs_space(size_t n)
-    {
-      size_t req = size() + n;
-      if (req >= _capacity) 
-      {
-        resize(req);
-      }
     }
 
     void write_byte(uint8_t byte)
@@ -131,20 +115,43 @@ namespace MessagePack
       memcpy(&_data[_write_pos], buf, len);
       _write_pos += len;
     }
+
+    private:
+
+    void resize(size_t req)
+    {
+      size_t new_size = _capacity * 2;
+      while (req > new_size) new_size *= 2;
+      char *d = (char*)realloc(_data, new_size); 
+      if (!d) {
+        throw "insufficient memory";
+      }
+      _data = d;
+    }
+
+    void needs_space(size_t n)
+    {
+      size_t req = size() + n;
+      if (req >= _capacity) 
+      {
+        resize(req);
+      }
+    }
+
   };
 
   struct Packer
   {
-    Buffer *buffer;
+    WriteBuffer *buffer;
 
-    Packer(Buffer *buf) : buffer(buf) {}
+    Packer(WriteBuffer *buf) : buffer(buf) {}
 
-    void set_buffer(Buffer *buf)
+    void set_buffer(WriteBuffer *buf)
     {
       buffer = buf;
     }
 
-    Buffer *get_buffer()
+    WriteBuffer *get_buffer()
     {
       return buffer;
     }
@@ -880,7 +887,7 @@ int main(int argc, char **argv)
   using namespace MessagePack;
   using namespace std;
 
-  Buffer buf(1024);
+  WriteBuffer buf(1024);
   Packer pk(&buf);
 
   pk.pack_uint8(123);

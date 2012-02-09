@@ -118,7 +118,7 @@ static VALUE
 Packer_s__dump(VALUE self, VALUE obj, VALUE depth, VALUE init_buffer_sz)
 {
   // depth == -1: infinitively
-  MessagePack::Buffer buffer(FIX2INT(init_buffer_sz));
+  MessagePack::WriteBuffer buffer(FIX2INT(init_buffer_sz));
   MessagePack::Packer t(&buffer);
   recurse(&t, obj, FIX2INT(depth));
   return rb_str_new(t.get_buffer()->data(), t.get_buffer()->size());
