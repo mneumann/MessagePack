@@ -29,6 +29,7 @@
 #include <stdio.h>    /* FILE, fwrite() */
 #include <endian.h>
 #include <assert.h>   /* assert */
+#include <string>     /* used by get_raw_body() */
 
 namespace MessagePack
 {
@@ -523,15 +524,13 @@ namespace MessagePack
     }
 
     /*
-     * Returns the current pointer, and advances it
-     * The user calling this function can access the memory directly.
+     * NOTE: replaces the contents of str with the read data, i.e. does not append the data
      */
-    const char *read_as_ptr(size_t sz)
+    void read(std::string &str, size_t sz)
     {
       needs_bytes(sz);
-      const char *current = &_data[_pos];
+      str.assign(&_data[_pos], sz);
       _pos += sz;
-      return current;
     }
 
     private:
@@ -928,13 +927,13 @@ namespace MessagePack
     }
 
     /*
-     * Returns a pointer to the buffer
+     * Read the raw body into str 
      */
-    const char *get_raw_body(size_t sz)
+    void get_raw_body(size_t sz, std::string &str)
     {
       if (buffer->can_read(sz))
       {
-        return buffer->read_as_ptr(sz);
+        buffer->read(str, sz);
       }
       else throw new InvalidUnpackException;
     }

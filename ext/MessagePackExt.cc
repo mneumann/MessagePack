@@ -241,11 +241,9 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
 }
 
 static VALUE
-Unpacker_s_each(VALUE self, VALUE str)
+unpack_each(const char *ptr, size_t sz)
 {
-  Check_Type(str, T_STRING);
-
-  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
+  MessagePack::MemoryReadBuffer buffer(ptr, sz);
   MessagePack::Unpacker uk(&buffer);
 
   bool success = true; 
@@ -264,6 +262,26 @@ Unpacker_s_each(VALUE self, VALUE str)
   return Qtrue;
 }
 
+static VALUE
+unpack_load(const char *ptr, size_t sz)
+{
+  MessagePack::MemoryReadBuffer buffer(ptr, sz);
+  MessagePack::Unpacker uk(&buffer);
+
+  bool success = true;
+  VALUE v = unpack_value(uk, success, NULL);
+  if (!success)
+    rb_raise(rb_eArgError, "Invalid msgpack string");
+  return v;
+}
+
+static VALUE
+Unpacker_s_each(VALUE self, VALUE str)
+{
+  Check_Type(str, T_STRING);
+  return unpack_each(RSTRING_PTR(str), RSTRING_LEN(str));
+}
+
 /*
  * Reads only first object from "stream"
  */
@@ -271,15 +289,7 @@ static VALUE
 Unpacker_s_load(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
-
-  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
-  MessagePack::Unpacker uk(&buffer);
-
-  bool success; 
-  VALUE v = unpack_value(uk, success, NULL);
-  if (!success)
-    rb_raise(rb_eArgError, "Invalid msgpack string");
-  return v;
+  return unpack_load(RSTRING_PTR(str), RSTRING_LEN(str));
 }
 
 extern "C"
