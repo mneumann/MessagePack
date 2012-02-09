@@ -4,6 +4,7 @@
 #include "ruby.h"
 #include "ruby/st.h"
 #include <assert.h>
+#include <stdio.h> /* fopen() */
 
 static ID to_msgpack_obj;
 static ID to_msgpack;
@@ -123,6 +124,28 @@ Packer_s__dump(VALUE self, VALUE obj, VALUE depth, VALUE init_buffer_sz)
   recurse(&t, obj, FIX2INT(depth));
   return rb_str_new(buffer.data(), buffer.size());
 }
+
+static VALUE
+Packer_s__dump_to_file(VALUE self, VALUE obj, VALUE file_name, VALUE depth)
+{
+  Check_Type(file_name, T_STRING);
+
+  // depth == -1: infinitively
+
+  FILE *file = fopen(RSTRING_PTR(file_name), "w+");
+  if (!file)
+  {
+    rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(file_name));
+  }
+
+  MessagePack::FileWriteBuffer buffer(file);
+  MessagePack::Packer t(&buffer);
+  recurse(&t, obj, FIX2INT(depth));
+
+  fclose(file);
+  return Qnil;
+}
+
 
 VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
 {
@@ -269,4 +292,5 @@ void Init_MessagePackExt()
   rb_define_module_function(mMessagePack, "_each", (VALUE (*)(...))Unpacker_s_each, 1);
   rb_define_module_function(mMessagePack, "load", (VALUE (*)(...))Unpacker_s_load, 1);
   rb_define_module_function(mMessagePack, "_dump", (VALUE (*)(...))Packer_s__dump, 3);
+  rb_define_module_function(mMessagePack, "_dump_to_file", (VALUE (*)(...))Packer_s__dump_to_file, 3);
 }

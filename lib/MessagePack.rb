@@ -6,6 +6,11 @@ module MessagePack
   end
   module_function :dump
 
+  def dump_to_file(obj, filename, depth=-1)
+    _dump_to_file(obj, filename, depth || -1)
+  end
+  module_function :dump_to_file
+
   def each(str, &block)
     raise unless _each(str, &block)
   end

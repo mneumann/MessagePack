@@ -26,6 +26,7 @@
 #include <stdint.h>   /* uint32_t ... */
 #include <string.h>   /* memcpy() */
 #include <stdlib.h>   /* malloc() */
+#include <stdio.h>    /* FILE, fwrite() */
 #include <endian.h>
 
 namespace MessagePack
@@ -72,6 +73,31 @@ namespace MessagePack
     }
 
     virtual void write(const void *buf, size_t len) = 0;
+  };
+
+  class FileWriteBuffer : public WriteBuffer
+  {
+    private:
+
+    FILE *file;
+
+    public:
+
+    FileWriteBuffer(FILE *file)
+    {
+      this->file = file;
+    }
+
+    ~FileWriteBuffer()
+    {
+      this->file = NULL;
+    }
+
+    virtual void write(const void *buf, size_t len)
+    {
+      if (fwrite(buf, len, 1, this->file) != 1)
+        throw "write error";
+    }
   };
 
   class MemoryWriteBuffer : public WriteBuffer
