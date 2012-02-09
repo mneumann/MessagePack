@@ -439,41 +439,21 @@ namespace MessagePack
   inline Packer& operator<<(Packer& p, double v) { p.pack_double(v); return p; }
   inline Packer& operator<<(Packer& p, bool v) { p.pack_bool(v); return p; }
 
-  class MemoryReadBuffer
+  /*
+   * Abstract base class of all ReadBuffer implementations
+   */
+  class ReadBuffer
   {
-    private:
-
-    const char *_data;
-    size_t _pos;
-    size_t _size;
-
     public:
 
-    MemoryReadBuffer(const char *str, size_t sz)
-    {
-      _data = str; 
-      _size = sz;
-      _pos = 0;
-    }
-
-    bool can_read(size_t n) const
-    {
-      if (_pos + n <= size())
-        return true;
-      else
-        return false;
-    }
+    virtual bool can_read(size_t n) const = 0;
+    virtual void unread(size_t n) = 0;
+    virtual void read(void *buffer, size_t sz) = 0;
+    virtual void read(std::string &str, size_t sz) = 0;
 
     bool at_end() const
     {
       return !can_read(1);
-    }
-
-    void unread(size_t n)
-    {
-      if (n > _pos)
-        throw "cannot unread more than read";
-      _pos -= n;
     }
 
     uint8_t read_byte()
@@ -515,8 +495,41 @@ namespace MessagePack
       uint64_t v = read8();
       return *((double*)&v);
     }
+  };
 
-    void read(void *buffer, size_t sz)
+  class MemoryReadBuffer : public ReadBuffer
+  {
+    private:
+
+    const char *_data;
+    size_t _pos;
+    size_t _size;
+
+    public:
+
+    MemoryReadBuffer(const char *str, size_t sz)
+    {
+      _data = str; 
+      _size = sz;
+      _pos = 0;
+    }
+
+    virtual bool can_read(size_t n) const
+    {
+      if (_pos + n <= size())
+        return true;
+      else
+        return false;
+    }
+
+    virtual void unread(size_t n)
+    {
+      if (n > _pos)
+        throw "cannot unread more than read";
+      _pos -= n;
+    }
+
+    virtual void read(void *buffer, size_t sz)
     {
       needs_bytes(sz);
       memcpy(buffer, &_data[_pos], sz);
@@ -526,7 +539,7 @@ namespace MessagePack
     /*
      * NOTE: replaces the contents of str with the read data, i.e. does not append the data
      */
-    void read(std::string &str, size_t sz)
+    virtual void read(std::string &str, size_t sz)
     {
       needs_bytes(sz);
       str.assign(&_data[_pos], sz);
@@ -585,9 +598,9 @@ namespace MessagePack
 
   struct Unpacker
   {
-    MemoryReadBuffer *buffer;
+    ReadBuffer *buffer;
 
-    Unpacker(MemoryReadBuffer *buf) : buffer(buf) { }
+    Unpacker(ReadBuffer *buf) : buffer(buf) { }
 
     bool can_read(size_t n, Data &data)
     {
