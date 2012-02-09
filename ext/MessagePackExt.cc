@@ -122,7 +122,7 @@ Packer_s__dump(VALUE self, VALUE obj, VALUE depth, VALUE init_buffer_sz)
   MessagePack::MemoryWriteBuffer buffer(FIX2INT(init_buffer_sz));
   MessagePack::Packer t(&buffer);
   recurse(&t, obj, FIX2INT(depth));
-  return rb_str_new(buffer.data(), buffer.size());
+  return rb_str_new((const char*)buffer.data(), buffer.size());
 }
 
 static VALUE

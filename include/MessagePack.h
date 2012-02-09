@@ -28,6 +28,7 @@
 #include <stdlib.h>   /* malloc() */
 #include <stdio.h>    /* FILE, fwrite() */
 #include <endian.h>
+#include <assert.h>   /* assert */
 
 namespace MessagePack
 {
@@ -100,33 +101,102 @@ namespace MessagePack
     }
   };
 
+  class ResizableBuffer
+  {
+    private:
+
+    void *_data;
+    size_t _capacity;
+    char _empty_buf; // is used as a special case when _capacity = 0 (see data()).
+
+    public:
+
+    ResizableBuffer()
+    {
+      _data = NULL;
+      _capacity = 0;
+      _empty_buf = 0;
+    }
+
+    ~ResizableBuffer()
+    {
+      if (_data)
+      {
+        free(_data);
+	_data = NULL;
+      }
+      _capacity = 0;
+    }
+
+    size_t capacity() const
+    {
+      return _capacity;
+    }
+
+    const void *data() const
+    {
+      if (_capacity == 0)
+      {
+        return &_empty_buf;
+      }
+      else
+      {
+        return _data;
+      }
+    }
+
+    void *ptr_at(size_t offs, size_t len)
+    {
+      assert(len > 0);
+      resize(offs + len);
+      assert(_data);
+      return (void*)(((char*)_data)+offs);
+    }
+
+    void resize(size_t req)
+    {
+      if (req < _capacity) return;
+
+      void *d = NULL;
+
+      size_t new_size = _capacity * 2;
+      if (new_size < 16) new_size = 16;
+      while (req > new_size) new_size *= 2;
+
+      if (_data)
+      {
+        d = realloc(_data, new_size);
+      }
+      else
+      {
+        d = malloc(new_size);
+      }
+
+      if (d)
+      {
+        _data = d;
+	_capacity = new_size;
+      }
+      else
+      {
+        throw "insufficient memory";
+      }
+    }
+  };
+
   class MemoryWriteBuffer : public WriteBuffer
   {
     private:
 
-    char *_data;
+    ResizableBuffer _buf;
     size_t _write_pos;
-    size_t _capacity;
 
     public:
 
     MemoryWriteBuffer(size_t initial_size)
     {
-      if (initial_size < 16) initial_size = 16;
-      _data = (char*)malloc(initial_size);
-      if (!_data) {
-        throw "insufficient memory";
-      }
+      _buf.resize(initial_size);
       _write_pos = 0;
-      _capacity = initial_size;
-    }
-
-    ~MemoryWriteBuffer()
-    {
-      if (_data) {
-        free(_data);
-        _data = NULL;
-      }
     }
 
     size_t size() const
@@ -134,49 +204,26 @@ namespace MessagePack
       return _write_pos;
     }
 
-    char *data() const
+    const void *data() const
     {
-      return _data;
+      return _buf.data();
     }
 
     void reset()
     {
-        _write_pos = 0;
+      _write_pos = 0;
     }
 
     virtual void write_byte(uint8_t byte)
     {
-      needs_space(1);
-      _data[_write_pos++] = (char)byte;
+      *((uint8_t*)_buf.ptr_at(_write_pos++, 1)) = byte;
+      ++_write_pos;
     }
 
     virtual void write(const void *buf, size_t len)
     {
-      needs_space(len);
-      memcpy(&_data[_write_pos], buf, len);
+      memcpy(_buf.ptr_at(_write_pos, len), buf, len);
       _write_pos += len;
-    }
-
-    private:
-
-    void resize(size_t req)
-    {
-      size_t new_size = _capacity * 2;
-      while (req > new_size) new_size *= 2;
-      char *d = (char*)realloc(_data, new_size); 
-      if (!d) {
-        throw "insufficient memory";
-      }
-      _data = d;
-    }
-
-    void needs_space(size_t n)
-    {
-      size_t req = size() + n;
-      if (req >= _capacity) 
-      {
-        resize(req);
-      }
     }
   };
 
