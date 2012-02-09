@@ -995,6 +995,12 @@ namespace MessagePack
       else throw new InvalidUnpackException;
     }
 
+    void get_array(uint32_t expected_size)
+    {
+      if (get_array() != expected_size)
+        throw new InvalidUnpackException;
+    }
+
     uint32_t get_map()
     {
       uint32_t v;
