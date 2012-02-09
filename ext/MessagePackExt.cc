@@ -5,6 +5,9 @@
 #include "ruby/st.h"
 #include <assert.h>
 #include <stdio.h> /* fopen() */
+#include <sys/types.h> /* fstat() */
+#include <sys/stat.h> /* fstat() */
+#include <unistd.h> /* fstat() */
 
 static ID to_msgpack_obj;
 static ID to_msgpack;
@@ -126,16 +129,16 @@ Packer_s__dump(VALUE self, VALUE obj, VALUE depth, VALUE init_buffer_sz)
 }
 
 static VALUE
-Packer_s__dump_to_file(VALUE self, VALUE obj, VALUE file_name, VALUE depth)
+Packer_s__dump_to_file(VALUE self, VALUE obj, VALUE filename, VALUE depth)
 {
-  Check_Type(file_name, T_STRING);
+  Check_Type(filename, T_STRING);
 
   // depth == -1: infinitively
 
-  FILE *file = fopen(RSTRING_PTR(file_name), "w+");
+  FILE *file = fopen(RSTRING_PTR(filename), "w+");
   if (!file)
   {
-    rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(file_name));
+    rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(filename));
   }
 
   MessagePack::FileWriteBuffer buffer(file);
@@ -241,10 +244,9 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
 }
 
 static VALUE
-unpack_each(const char *ptr, size_t sz)
+unpack_each(MessagePack::ReadBuffer *buffer)
 {
-  MessagePack::MemoryReadBuffer buffer(ptr, sz);
-  MessagePack::Unpacker uk(&buffer);
+  MessagePack::Unpacker uk(buffer);
 
   bool success = true; 
   VALUE v = Qnil;
@@ -263,10 +265,9 @@ unpack_each(const char *ptr, size_t sz)
 }
 
 static VALUE
-unpack_load(const char *ptr, size_t sz)
+unpack_load(MessagePack::ReadBuffer *buffer)
 {
-  MessagePack::MemoryReadBuffer buffer(ptr, sz);
-  MessagePack::Unpacker uk(&buffer);
+  MessagePack::Unpacker uk(buffer);
 
   bool success = true;
   VALUE v = unpack_value(uk, success, NULL);
@@ -279,7 +280,8 @@ static VALUE
 Unpacker_s_each(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
-  return unpack_each(RSTRING_PTR(str), RSTRING_LEN(str));
+  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
+  return unpack_each(&buffer);
 }
 
 /*
@@ -289,8 +291,42 @@ static VALUE
 Unpacker_s_load(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
-  return unpack_load(RSTRING_PTR(str), RSTRING_LEN(str));
+  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
+  return unpack_load(&buffer);
 }
+
+static VALUE
+Unpacker_s_load_from_file(VALUE self, VALUE filename)
+{
+  Check_Type(filename, T_STRING);
+
+  FILE *file = fopen(RSTRING_PTR(filename), "r");
+  if (!file)
+  {
+    rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(filename));
+  }
+
+  struct stat buf;
+  if (fstat(fileno(file), &buf) != 0)
+  {
+    fclose(file);
+    rb_raise(rb_eRuntimeError, "Failed to stat file");
+  }
+  if (buf.st_size < 0)
+  {
+    fclose(file);
+    rb_raise(rb_eRuntimeError, "Failed to stat file (invalid st_size)");
+  }
+
+  MessagePack::FileReadBuffer buffer(file, buf.st_size);
+
+  VALUE obj = unpack_load(&buffer);
+
+  fclose(file);
+
+  return obj;
+}
+
 
 extern "C"
 void Init_MessagePackExt()
@@ -301,6 +337,7 @@ void Init_MessagePackExt()
   mMessagePack = rb_define_module("MessagePack");
   rb_define_module_function(mMessagePack, "_each", (VALUE (*)(...))Unpacker_s_each, 1);
   rb_define_module_function(mMessagePack, "load", (VALUE (*)(...))Unpacker_s_load, 1);
+  rb_define_module_function(mMessagePack, "load_from_file", (VALUE (*)(...))Unpacker_s_load_from_file, 1);
   rb_define_module_function(mMessagePack, "_dump", (VALUE (*)(...))Packer_s__dump, 3);
   rb_define_module_function(mMessagePack, "_dump_to_file", (VALUE (*)(...))Packer_s__dump_to_file, 3);
 }

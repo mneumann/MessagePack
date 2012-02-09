@@ -516,7 +516,7 @@ namespace MessagePack
 
     virtual bool can_read(size_t n) const
     {
-      if (_pos + n <= size())
+      if (_pos + n <= _size)
         return true;
       else
         return false;
@@ -550,13 +550,71 @@ namespace MessagePack
 
     void needs_bytes(size_t n)
     {
-      if (_pos + n > size())
+      if (_pos + n > _size)
         throw "read over buffer boundaries";
     }
+  };
 
-    size_t size() const
+  class FileReadBuffer : public ReadBuffer
+  {
+    private:
+
+    FILE *_file;
+    size_t _pos;
+    size_t _size;
+
+    public:
+
+    FileReadBuffer(FILE *file, size_t filesz)
     {
-      return _size;
+      _file = file;
+      _size = filesz;
+      _pos = 0;
+    }
+
+    virtual bool can_read(size_t n) const
+    {
+      if (_pos + n <= _size)
+        return true;
+      else
+        return false;
+    }
+
+    virtual void unread(size_t n)
+    {
+      if (n > _pos) throw "cannot unread more than read";
+      _pos -= n;
+      if (fseek(_file, _pos, SEEK_SET) != 0)
+      {
+        throw "fseek failed";
+      }
+    }
+
+    virtual void read(void *buffer, size_t sz)
+    {
+      needs_bytes(sz);
+      if (fread(buffer, sz, 1, _file) != 1)
+      {
+        throw "fread failed";
+      }
+      _pos += sz;
+    }
+
+    /*
+     * NOTE: replaces the contents of str with the read data, i.e. does not append the data
+     */
+    virtual void read(std::string &str, size_t sz)
+    {
+      str.resize(sz);
+      read((void*)str.data(), sz);
+    }
+
+    private:
+
+    void needs_bytes(size_t n)
+    {
+      if (_pos + n > _size)
+        throw "read over buffer boundaries";
     }
   };
 
