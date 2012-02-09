@@ -300,31 +300,14 @@ Unpacker_s_load_from_file(VALUE self, VALUE filename)
 {
   Check_Type(filename, T_STRING);
 
-  FILE *file = fopen(RSTRING_PTR(filename), "r");
-  if (!file)
-  {
-    rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(filename));
+  try {
+    MessagePack::FileReadBuffer buffer(RSTRING_PTR(filename));
+    return unpack_load(&buffer);
   }
-
-  struct stat buf;
-  if (fstat(fileno(file), &buf) != 0)
+  catch(MessagePack::FileException &e)
   {
-    fclose(file);
-    rb_raise(rb_eRuntimeError, "Failed to stat file");
+    rb_raise(rb_eRuntimeError, "FileException: %s", e.msg);
   }
-  if (buf.st_size < 0)
-  {
-    fclose(file);
-    rb_raise(rb_eRuntimeError, "Failed to stat file (invalid st_size)");
-  }
-
-  MessagePack::FileReadBuffer buffer(file, buf.st_size);
-
-  VALUE obj = unpack_load(&buffer);
-
-  fclose(file);
-
-  return obj;
 }
 
 

@@ -543,6 +543,13 @@ namespace MessagePack
     }
   };
 
+  struct FileException
+  {
+    const char *msg;
+    FileException() : msg("") {}
+    FileException(const char *m) : msg(m) {}
+  };
+
   class FileReadBuffer : public ReadBuffer
   {
     private:
@@ -550,6 +557,7 @@ namespace MessagePack
     FILE *_file;
     size_t _pos;
     size_t _size;
+    bool _close_file;
 
     public:
 
@@ -558,6 +566,46 @@ namespace MessagePack
       _file = file;
       _size = filesz;
       _pos = 0;
+      _close_file = false;
+    }
+
+    FileReadBuffer(const char *filename)
+    {
+      FILE *file = fopen(filename, "r");
+      if (!file) throw new FileException("Failed to open file");
+
+      if (fseek(file, 0, SEEK_END) != 0)
+      {
+        fclose(file);
+	throw new FileException("fseek failed");
+      }
+
+      long sz = ftell(file);
+      if (sz < 0)
+      {
+        fclose(file);
+	throw new FileException("ftell failed");
+      }
+
+      if (fseek(file, 0, SEEK_SET) != 0)
+      {
+        fclose(file);
+	throw new FileException("fseek failed");
+      }
+
+      _file = file;
+      _size = sz;
+      _pos = 0;
+      _close_file = true;
+    }
+
+    ~FileReadBuffer()
+    {
+      if (_close_file && _file)
+      {
+        fclose(_file);
+	_file = NULL;
+      }
     }
 
     virtual bool can_read(size_t n) const
@@ -574,7 +622,7 @@ namespace MessagePack
       _pos -= n;
       if (fseek(_file, -n, SEEK_CUR) != 0)
       {
-        throw "fseek failed";
+        throw new FileException("fseek failed");
       }
     }
 
@@ -583,7 +631,7 @@ namespace MessagePack
       needs_bytes(sz);
       if (fread(buffer, sz, 1, _file) != 1)
       {
-        throw "fread failed";
+        throw new FileException("fread failed");
       }
       _pos += sz;
     }
