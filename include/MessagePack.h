@@ -38,12 +38,39 @@ namespace MessagePack
   {
     public:
 
-    virtual void write_byte(uint8_t byte) = 0;
-    virtual void write2(uint16_t v) = 0;
-    virtual void write4(uint32_t v) = 0;
-    virtual void write8(uint64_t v) = 0;
-    virtual void write_float(float v) = 0;
-    virtual void write_double(double v) = 0;
+    virtual void write_byte(uint8_t byte)
+    {
+      write(&byte, 1);
+    }
+
+    virtual void write2(uint16_t v)
+    {
+      v = htobe16(v);
+      write(&v, 2);
+    }
+
+    virtual void write4(uint32_t v)
+    {
+      v = htobe32(v);
+      write(&v, 4);
+    }
+
+    virtual void write8(uint64_t v)
+    {
+      v = htobe64(v);
+      write(&v, 8);
+    }
+
+    virtual void write_float(float v)
+    {
+      write4(*((uint32_t*)&v));
+    }
+
+    virtual void write_double(double v)
+    {
+      write8(*((uint64_t*)&v));
+    }
+
     virtual void write(const void *buf, size_t len) = 0;
   };
 
@@ -95,34 +122,6 @@ namespace MessagePack
     {
       needs_space(1);
       _data[_write_pos++] = (char)byte;
-    }
-
-    virtual void write2(uint16_t v)
-    {
-      v = htobe16(v);
-      write(&v, 2);
-    }
-
-    virtual void write4(uint32_t v)
-    {
-      v = htobe32(v);
-      write(&v, 4);
-    }
-
-    virtual void write8(uint64_t v)
-    {
-      v = htobe64(v);
-      write(&v, 8);
-    }
-
-    virtual void write_float(float v)
-    {
-      write4(*((uint32_t*)&v));
-    }
-
-    virtual void write_double(double v)
-    {
-      write8(*((uint64_t*)&v));
     }
 
     virtual void write(const void *buf, size_t len)
