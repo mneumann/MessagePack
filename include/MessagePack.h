@@ -29,7 +29,6 @@
 #include <stdio.h>    /* FILE, fwrite() */
 #include <endian.h>
 #include <assert.h>   /* assert */
-#include <string>     /* used by get_raw_body() */
 
 namespace MessagePack
 {
@@ -449,7 +448,6 @@ namespace MessagePack
     virtual bool can_read(size_t n) const = 0;
     virtual void unread(size_t n) = 0;
     virtual void read(void *buffer, size_t sz) = 0;
-    virtual void read(std::string &str, size_t sz) = 0;
 
     bool at_end() const
     {
@@ -536,16 +534,6 @@ namespace MessagePack
       _pos += sz;
     }
 
-    /*
-     * NOTE: replaces the contents of str with the read data, i.e. does not append the data
-     */
-    virtual void read(std::string &str, size_t sz)
-    {
-      needs_bytes(sz);
-      str.assign(&_data[_pos], sz);
-      _pos += sz;
-    }
-
     private:
 
     void needs_bytes(size_t n)
@@ -598,15 +586,6 @@ namespace MessagePack
         throw "fread failed";
       }
       _pos += sz;
-    }
-
-    /*
-     * NOTE: replaces the contents of str with the read data, i.e. does not append the data
-     */
-    virtual void read(std::string &str, size_t sz)
-    {
-      str.resize(sz);
-      read((void*)str.data(), sz);
     }
 
     private:
@@ -998,13 +977,13 @@ namespace MessagePack
     }
 
     /*
-     * Read the raw body into str 
+     * Read the raw body into buf which must be of size 'sz' 
      */
-    void get_raw_body(size_t sz, std::string &str)
+    void get_raw_body(void *buf, size_t sz)
     {
       if (buffer->can_read(sz))
       {
-        buffer->read(str, sz);
+        buffer->read(buf, sz);
       }
       else throw new InvalidUnpackException;
     }
