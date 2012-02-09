@@ -245,7 +245,7 @@ Unpacker_s_each(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
 
-  MessagePack::ReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
+  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
   MessagePack::Unpacker uk(&buffer);
 
   bool success = true; 
@@ -272,7 +272,7 @@ Unpacker_s_load(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
 
-  MessagePack::ReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
+  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
   MessagePack::Unpacker uk(&buffer);
 
   bool success; 

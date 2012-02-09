@@ -438,28 +438,21 @@ namespace MessagePack
   inline Packer& operator<<(Packer& p, double v) { p.pack_double(v); return p; }
   inline Packer& operator<<(Packer& p, bool v) { p.pack_bool(v); return p; }
 
-  struct ReadBuffer
+  class MemoryReadBuffer
   {
+    private:
+
     const char *_data;
     size_t _pos;
     size_t _size;
 
-    ReadBuffer(const char *str, size_t sz)
+    public:
+
+    MemoryReadBuffer(const char *str, size_t sz)
     {
       _data = str; 
       _size = sz;
       _pos = 0;
-    }
-
-    size_t size() const
-    {
-      return _size;
-    }
-
-    void needs_bytes(size_t n)
-    {
-      if (_pos + n > size())
-        throw "read over buffer boundaries";
     }
 
     bool can_read(size_t n) const
@@ -478,7 +471,7 @@ namespace MessagePack
     void unread(size_t n)
     {
       if (n > _pos)
-        throw "cannot unread";
+        throw "cannot unread more than read";
       _pos -= n;
     }
 
@@ -540,6 +533,19 @@ namespace MessagePack
       _pos += sz;
       return current;
     }
+
+    private:
+
+    void needs_bytes(size_t n)
+    {
+      if (_pos + n > size())
+        throw "read over buffer boundaries";
+    }
+
+    size_t size() const
+    {
+      return _size;
+    }
   };
 
   enum DataType {
@@ -580,9 +586,9 @@ namespace MessagePack
 
   struct Unpacker
   {
-    ReadBuffer *buffer;
+    MemoryReadBuffer *buffer;
 
-    Unpacker(ReadBuffer *buf) : buffer(buf) { }
+    Unpacker(MemoryReadBuffer *buf) : buffer(buf) { }
 
     bool can_read(size_t n, Data &data)
     {
@@ -988,7 +994,7 @@ int main(int argc, char **argv)
   fclose(f);
   */
 
-  ReadBuffer rbuf(buf.data(), buf.size());
+  MemoryReadBuffer rbuf(buf.data(), buf.size());
   Unpacker uk(&rbuf);
 
   cout << uk.read_uint() << endl;
