@@ -216,7 +216,7 @@ namespace MessagePack
 
     virtual void write_byte(uint8_t byte)
     {
-      *((uint8_t*)_buf.ptr_at(_write_pos++, 1)) = byte;
+      *((uint8_t*)_buf.ptr_at(_write_pos, 1)) = byte;
       ++_write_pos;
     }
 
