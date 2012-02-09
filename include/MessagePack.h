@@ -31,7 +31,23 @@
 namespace MessagePack
 {
 
+  /*
+   * Abstract base class of all WriteBuffer implementations
+   */
   class WriteBuffer
+  {
+    public:
+
+    virtual void write_byte(uint8_t byte) = 0;
+    virtual void write2(uint16_t v) = 0;
+    virtual void write4(uint32_t v) = 0;
+    virtual void write8(uint64_t v) = 0;
+    virtual void write_float(float v) = 0;
+    virtual void write_double(double v) = 0;
+    virtual void write(const void *buf, size_t len) = 0;
+  };
+
+  class MemoryWriteBuffer : public WriteBuffer
   {
     private:
 
@@ -41,7 +57,7 @@ namespace MessagePack
 
     public:
 
-    WriteBuffer(size_t initial_size)
+    MemoryWriteBuffer(size_t initial_size)
     {
       if (initial_size < 16) initial_size = 16;
       _data = (char*)malloc(initial_size);
@@ -52,7 +68,7 @@ namespace MessagePack
       _capacity = initial_size;
     }
 
-    ~WriteBuffer()
+    ~MemoryWriteBuffer()
     {
       if (_data) {
         free(_data);
@@ -75,41 +91,41 @@ namespace MessagePack
         _write_pos = 0;
     }
 
-    void write_byte(uint8_t byte)
+    virtual void write_byte(uint8_t byte)
     {
       needs_space(1);
       _data[_write_pos++] = (char)byte;
     }
 
-    void write2(uint16_t v)
+    virtual void write2(uint16_t v)
     {
       v = htobe16(v);
       write(&v, 2);
     }
 
-    void write4(uint32_t v)
+    virtual void write4(uint32_t v)
     {
       v = htobe32(v);
       write(&v, 4);
     }
 
-    void write8(uint64_t v)
+    virtual void write8(uint64_t v)
     {
       v = htobe64(v);
       write(&v, 8);
     }
 
-    void write_float(float v)
+    virtual void write_float(float v)
     {
       write4(*((uint32_t*)&v));
     }
 
-    void write_double(double v)
+    virtual void write_double(double v)
     {
       write8(*((uint64_t*)&v));
     }
 
-    void write(const void *buf, size_t len)
+    virtual void write(const void *buf, size_t len)
     {
       needs_space(len);
       memcpy(&_data[_write_pos], buf, len);
@@ -137,7 +153,6 @@ namespace MessagePack
         resize(req);
       }
     }
-
   };
 
   struct Packer
@@ -887,7 +902,7 @@ int main(int argc, char **argv)
   using namespace MessagePack;
   using namespace std;
 
-  WriteBuffer buf(1024);
+  MemoryWriteBuffer buf(1024);
   Packer pk(&buf);
 
   pk.pack_uint8(123);
