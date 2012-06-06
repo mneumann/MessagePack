@@ -5,7 +5,8 @@ spec = Gem::Specification.new do |s|
   s.author = 'Michael Neumann'
   s.license = 'BSD License'
   s.files = ['MessagePack.gemspec',
-             'include/MessagePack.h', 'include/MessagePackDump.h'
+             'include/MessagePack.h', 'include/MessagePackDump.h',
+             'include/MessagePackLoad.h',
              'lib/MessagePack.rb',
 	     'ext/extconf.rb', 'ext/MessagePackExt.cc']
   s.extensions = ['ext/extconf.rb']
