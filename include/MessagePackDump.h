@@ -12,88 +12,59 @@ namespace MessagePack
 {
   using namespace std;
 
-  inline void dump(uint64_t value, Packer &pk)
-  {
-    pk.pack_uint(value);
-  }
+  inline Packer& operator<<(Packer& p, const uint8_t &v) { p.pack_uint8(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint16_t &v) { p.pack_uint16(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint32_t &v) { p.pack_uint32(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint64_t &v) { p.pack_uint64(v); return p; }
+  inline Packer& operator<<(Packer& p, const int8_t &v) { p.pack_int8(v); return p; }
+  inline Packer& operator<<(Packer& p, const int16_t &v) { p.pack_int16(v); return p; }
+  inline Packer& operator<<(Packer& p, const int32_t &v) { p.pack_int32(v); return p; }
+  inline Packer& operator<<(Packer& p, const int64_t &v) { p.pack_int64(v); return p; }
+  inline Packer& operator<<(Packer& p, const float &v) { p.pack_float(v); return p; }
+  inline Packer& operator<<(Packer& p, const double &v) { p.pack_double(v); return p; }
+  inline Packer& operator<<(Packer& p, const bool &v) { p.pack_bool(v); return p; }
 
-  inline void dump(uint32_t value, Packer &pk)
+  inline Packer& operator<<(Packer& p, const string &v)
   {
-    pk.pack_uint(value);
-  }
-
-  inline void dump(uint16_t value, Packer &pk)
-  {
-    pk.pack_uint(value);
-  }
-
-  inline void dump(uint8_t value, Packer &pk)
-  {
-    pk.pack_uint(value);
-  }
-
-  inline void dump(int64_t value, Packer &pk)
-  {
-    pk.pack_int(value);
-  }
-
-  inline void dump(int32_t value, Packer &pk)
-  {
-    pk.pack_int(value);
-  }
-
-  inline void dump(int16_t value, Packer &pk)
-  {
-    pk.pack_int(value);
-  }
-
-  inline void dump(int8_t value, Packer &pk)
-  {
-    pk.pack_int(value);
-  }
-
-  inline void dump(double value, Packer &pk)
-  {
-    pk.pack_double(value);
-  }
-
-  inline void dump(const string &value, Packer &pk)
-  {
-    pk.pack_raw(value.c_str(), value.size());
+    p.pack_raw(v.c_str(), v.size());
+    return p;
   }
 
   template <class T>
-  void dump(const vector<T> &value, Packer &pk)
+  Packer& operator<<(Packer& p, const vector<T> &v)
   {
     typedef typename vector<T>::const_iterator CI;
-    pk.pack_array(value.size());
-    for (CI it=value.begin(); it != value.end(); ++it)
+    p.pack_array(v.size());
+    for (CI it=v.begin(); it != v.end(); ++it)
     {
-      dump(*it, pk);
+      p << (*it);
     }
+    return p;
   }
 
   template <class T>
-  void dump(const set<T> &value, Packer &pk)
+  Packer& operator<<(Packer& p, const set<T> &v)
   {
     typedef typename set<T>::const_iterator CI;
-    pk.pack_array(value.size());
-    for (CI it=value.begin(); it != value.end(); ++it)
+    p.pack_array(v.size());
+    for (CI it=v.begin(); it != v.end(); ++it)
     {
-      dump(*it, pk);
+      p << (*it);
     }
+    return p;
   }
 
   template <class K, class V>
-  void dump(const map<K, V> &value, Packer &pk)
+  Packer& operator<<(Packer& p, const map<K, V> &v)
   {
     typedef typename map<K, V>::const_iterator CI;
-    pk.pack_map(value.size());
-    for (CI it=value.begin(); it != value.end(); ++it)
+    p.pack_map(v.size());
+    for (CI it=v.begin(); it != v.end(); ++it)
     {
-      dump(it->first, pk);
-      dump(it->second, pk);
+      p << it->first;
+      p << it->second;
     }
+    return p;
   }
 };
 

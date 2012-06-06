@@ -10,98 +10,123 @@
 #include <string>
 #include "MessagePack.h"
 
+// TODO: Check range of integer ops!
+
 namespace MessagePack 
 {
   using namespace std;
 
-  // TODO: Check range!
-
-  inline void load(uint64_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, uint8_t &v) 
   {
-    value = uk.get_uint();
+    v = u.get_uint();
+    return u;
   }
 
-  inline void load(uint32_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, uint16_t &v) 
   {
-    value = uk.get_uint();
+    v = u.get_uint();
+    return u;
   }
 
-  inline void load(uint16_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, uint32_t &v) 
   {
-    value = uk.get_uint();
+    v = u.get_uint();
+    return u;
   }
 
-  inline void load(uint8_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, uint64_t &v) 
   {
-    value = uk.get_uint();
+    v = u.get_uint();
+    return u;
   }
 
-  inline void load(int64_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, int8_t &v) 
   {
-    value = uk.get_int();
+    v = u.get_int();
+    return u;
   }
 
-  inline void load(int32_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, int16_t &v) 
   {
-    value = uk.get_int();
+    v = u.get_int();
+    return u;
   }
 
-  inline void load(int16_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, int32_t &v) 
   {
-    value = uk.get_int();
+    v = u.get_int();
+    return u;
   }
 
-  inline void load(int8_t &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, int64_t &v) 
   {
-    value = uk.get_int();
+    v = u.get_int();
+    return u;
   }
 
-  inline void load(double &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, float &v) 
   {
-    value = uk.get_double();
+    v = u.get_float();
+    return u;
   }
 
-  inline void load(string &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, double &v) 
   {
-    uint32_t sz = uk.get_raw();
+    v = u.get_double();
+    return u;
+  }
+
+  inline Unpacker& operator>>(Unpacker &u, bool &v) 
+  {
+    v = u.get_bool();
+    return u;
+  }
+
+  inline Unpacker& operator>>(Unpacker &u, string &v) 
+  {
+    uint32_t sz = u.get_raw();
     void *buf = malloc(sz);
     assert(buf);
-    uk.get_raw_body(buf, sz);
-    value.assign((char*)buf, sz);
+    u.get_raw_body(buf, sz);
+    v.assign((char*)buf, sz);
     free(buf);
+    return u;
   }
 
   template <class T>
-  void load(vector<T> &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, vector<T> &v) 
   {
-    for (int sz = uk.get_array(); sz > 0; --sz)
+    for (int sz = u.get_array(); sz > 0; --sz)
     {
       T element;
-      load(element, uk);
-      value.push_back(element);
+      u >> element;
+      v.push_back(element);
     }
+    return u;
   }
 
   template <class T>
-  void load(set<T> &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, set<T> &v) 
   {
-    for (int sz = uk.get_array(); sz > 0; --sz)
+    for (int sz = u.get_array(); sz > 0; --sz)
     {
       T element;
-      load(element, uk);
-      value.insert(element);
+      u >> element;
+      v.insert(element);
     }
+    return u;
   }
 
   template <class K, class V>
-  void load(map<K, V> &value, Unpacker &uk)
+  inline Unpacker& operator>>(Unpacker &u, map<K, V> &v) 
   {
-    for (int sz = uk.get_map(); sz > 0; --sz)
+    for (int sz = u.get_map(); sz > 0; --sz)
     {
       K key;
-      load(key, uk);
-      load(value[key], uk);
+      u >> key;
+      u >> v[key];
     }
+    return u;
   }
 };
 

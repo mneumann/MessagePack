@@ -430,18 +430,6 @@ namespace MessagePack
 
   };
 
-  inline Packer& operator<<(Packer& p, uint8_t v) { p.pack_uint8(v); return p; }
-  inline Packer& operator<<(Packer& p, uint16_t v) { p.pack_uint16(v); return p; }
-  inline Packer& operator<<(Packer& p, uint32_t v) { p.pack_uint32(v); return p; }
-  inline Packer& operator<<(Packer& p, uint64_t v) { p.pack_uint64(v); return p; }
-  inline Packer& operator<<(Packer& p, int8_t v) { p.pack_int8(v); return p; }
-  inline Packer& operator<<(Packer& p, int16_t v) { p.pack_int16(v); return p; }
-  inline Packer& operator<<(Packer& p, int32_t v) { p.pack_int32(v); return p; }
-  inline Packer& operator<<(Packer& p, int64_t v) { p.pack_int64(v); return p; }
-  inline Packer& operator<<(Packer& p, float v) { p.pack_float(v); return p; }
-  inline Packer& operator<<(Packer& p, double v) { p.pack_double(v); return p; }
-  inline Packer& operator<<(Packer& p, bool v) { p.pack_bool(v); return p; }
-
   /*
    * Abstract base class of all ReadBuffer implementations
    */
