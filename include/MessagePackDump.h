@@ -12,14 +12,14 @@ namespace MessagePack
 {
   using namespace std;
 
-  inline Packer& operator<<(Packer& p, const uint8_t &v) { p.pack_uint(v); return p; }
-  inline Packer& operator<<(Packer& p, const uint16_t &v) { p.pack_uint(v); return p; }
-  inline Packer& operator<<(Packer& p, const uint32_t &v) { p.pack_uint(v); return p; }
-  inline Packer& operator<<(Packer& p, const uint64_t &v) { p.pack_uint(v); return p; }
-  inline Packer& operator<<(Packer& p, const int8_t &v) { p.pack_int(v); return p; }
-  inline Packer& operator<<(Packer& p, const int16_t &v) { p.pack_int(v); return p; }
-  inline Packer& operator<<(Packer& p, const int32_t &v) { p.pack_int(v); return p; }
-  inline Packer& operator<<(Packer& p, const int64_t &v) { p.pack_int(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint8_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint16_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint32_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const uint64_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const int8_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const int16_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const int32_t &v) { p.pack_integer(v); return p; }
+  inline Packer& operator<<(Packer& p, const int64_t &v) { p.pack_integer(v); return p; }
   inline Packer& operator<<(Packer& p, const float &v) { p.pack_float(v); return p; }
   inline Packer& operator<<(Packer& p, const double &v) { p.pack_double(v); return p; }
   inline Packer& operator<<(Packer& p, const bool &v) { p.pack_bool(v); return p; }

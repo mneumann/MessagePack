@@ -33,6 +33,7 @@
   #include <sys/endian.h>
 #endif
 #include <assert.h>   /* assert */
+#include <limits> /* numeric_limits */
 
 namespace MessagePack
 {
@@ -313,6 +314,24 @@ namespace MessagePack
     {
       buffer->write_byte(0xd3);
       buffer->write8(v);
+    }
+
+    void pack_integer(uint64_t v)
+    {
+      pack_uint(v);
+    }
+
+    /*
+     * NOTE:
+     *
+     * values > 0 could be packed more efficiently when packing 
+     * them as unsigned integers. The Ruby extension does this!
+     */
+    void pack_integer(int64_t v)
+    {
+      /*if (v > 0) pack_uint(v);
+      else */
+      pack_int(v);
     }
 
     void pack_int(int64_t v)
@@ -859,6 +878,49 @@ namespace MessagePack
         return true;
       }
       return false;
+    }
+
+    /* 
+     * unpack_signed also accpets unsigned values, but not the otherway round
+     */
+
+    template <class T>
+    void unpack_unsigned(T &out)
+    {
+      uint64_t v;
+      if (read_uint(v))
+      {
+        if (v <= std::numeric_limits<T>::max())
+        {
+          out = v;
+          return;
+        }
+      }
+      throw new InvalidUnpackException;
+    }
+
+    template <class T>
+    void unpack_signed(T &out)
+    {
+      uint64_t u;
+      int64_t s;
+      if (read_int(s))
+      {
+        if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
+        {
+          out = s;
+          return;
+        }
+      }
+      else if (read_uint(u))
+      {
+        if (u <= std::numeric_limits<T>::max())
+        {
+          out = u;
+          return;
+        }
+      }
+      throw new InvalidUnpackException;
     }
 
     bool read_int(int64_t &v)
