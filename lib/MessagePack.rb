@@ -16,6 +16,13 @@ module MessagePack
   end
   module_function :each
 
+  def to_a(str)
+    ary = []
+    each(str) {|obj| ary << obj}
+    ary
+  end
+  module_function :to_a
+
   def self.include_path
     File.join(File.dirname(__FILE__), "../include")
   end
