@@ -100,7 +100,7 @@ namespace MessagePack
 
     virtual void write(const void *buf, size_t len)
     {
-      if (fwrite(buf, len, 1, this->file) != 1)
+      if (fwrite(buf, 1, len, this->file) != len)
         throw "write error";
     }
   };
