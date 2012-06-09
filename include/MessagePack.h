@@ -375,7 +375,10 @@ namespace MessagePack
         buffer->write4(len);
       }
 
-      buffer->write(raw, len);
+      if (len > 0)
+      {
+        buffer->write(raw, len);
+      }
     }
 
     void pack_array(uint32_t len)
