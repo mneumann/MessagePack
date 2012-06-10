@@ -871,14 +871,25 @@ namespace MessagePack
     {
       uint64_t u;
       int64_t s;
-      if (read_uint(u))
+
+      Data d;
+      if (read_next(d) == 0)
       {
-      }
-      else if (read_int(s))
-      {
-        if (s < 0) throw InvalidUnpackException("unpack_unsigned: negative value");
-        u = (uint64_t)s;
-      }
+        if (d.type == MSGPACK_T_UINT)
+        {
+          u = d.value.u;
+        }
+        else if (d.type == MSGPACK_T_INT)
+        {
+          s = d.value.i; 
+          if (s < 0) throw InvalidUnpackException("unpack_unsigned: negative value");
+          u = (uint64_t)s;
+        }
+        else
+        {
+          throw InvalidUnpackException("unpack_unsigned: no integer given");
+        }
+      } 
       else
       {
         throw InvalidUnpackException("unpack_unsigned: no integer given");
@@ -900,14 +911,25 @@ namespace MessagePack
     {
       int64_t s;
       uint64_t u;
-      if (read_int(s))
+
+      Data d;
+      if (read_next(d) == 0)
       {
-      }
-      else if (read_uint(u))
-      {
-        if (u > (uint64_t)std::numeric_limits<int64_t>::max())
-          throw InvalidUnpackException("unpack_signed: unsigned value too large");
-        s = (int64_t)u;
+        if (d.type == MSGPACK_T_INT)
+        {
+          s = d.value.i;
+        }
+        else if (d.type == MSGPACK_T_UINT)
+        {
+          u = d.value.u;
+          if (u > (uint64_t)std::numeric_limits<int64_t>::max())
+            throw InvalidUnpackException("unpack_signed: unsigned value too large");
+          s = (int64_t)u;
+        }
+        else
+        {
+          throw InvalidUnpackException("unpack_signed: no integer given");
+        }
       }
       else
       {
