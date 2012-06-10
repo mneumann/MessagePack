@@ -316,24 +316,6 @@ namespace MessagePack
       buffer->write8(v);
     }
 
-    void pack_integer(uint64_t v)
-    {
-      pack_uint(v);
-    }
-
-    /*
-     * NOTE:
-     *
-     * values > 0 could be packed more efficiently when packing 
-     * them as unsigned integers. The Ruby extension does this!
-     */
-    void pack_integer(int64_t v)
-    {
-      /*if (v > 0) pack_uint(v);
-      else */
-      pack_int(v);
-    }
-
     void pack_int(int64_t v)
     {
       if      (v >= -(1L<<7)  && v <= (1L<<7)-1)  pack_int8(v);
