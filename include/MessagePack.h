@@ -676,6 +676,7 @@ namespace MessagePack
   struct InvalidUnpackException
   {
     const char *msg;
+    InvalidUnpackException() : msg("") {}
     InvalidUnpackException(const char *_msg) : msg(_msg) {}
   };
 
