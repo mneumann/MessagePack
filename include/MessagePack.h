@@ -892,7 +892,10 @@ namespace MessagePack
           throw InvalidUnpackException("unpack_integer: out of range");
         }
       }
-      else throw InvalidUnpackException("unpack_integer: no integer given");
+      else
+      {
+        throw InvalidUnpackException("unpack_integer: no integer given");
+      }
     }
  
     bool read_int(int64_t &v)
