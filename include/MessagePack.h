@@ -675,6 +675,8 @@ namespace MessagePack
 
   struct InvalidUnpackException
   {
+    const char *msg;
+    InvalidUnpackException(const char *_msg) : msg(_msg) {}
   };
 
   struct Unpacker
@@ -862,10 +864,6 @@ namespace MessagePack
       return false;
     }
 
-    /* 
-     * unpack_signed also accpets unsigned values, but not the otherway round
-     */
-
     template <class T>
     void unpack_unsigned(T &out)
     {
@@ -875,34 +873,37 @@ namespace MessagePack
         if (v <= std::numeric_limits<T>::max())
         {
           out = v;
-          return;
+        }
+        else
+        {
+          throw new InvalidUnpackException("unpack_unsigned: out of range");
         }
       }
-      throw new InvalidUnpackException;
+      else throw new InvalidUnpackException("unpack_unsigned: no uint given");
     }
 
+    /* 
+     * unpack_signed also accpets unsigned values, but not the otherway round
+     */
     template <class T>
     void unpack_signed(T &out)
     {
-      uint64_t u;
       int64_t s;
       if (read_int(s))
       {
         if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
         {
           out = s;
-          return;
         }
-      }
-      else if (read_uint(u))
-      {
-        if (u <= std::numeric_limits<T>::max())
+        else
         {
-          out = u;
-          return;
+          throw new InvalidUnpackException("unpack_signed: out of range");
         }
       }
-      throw new InvalidUnpackException;
+      else
+      {
+        unpack_unsigned(out);
+      }
     }
 
     bool read_int(int64_t &v)
