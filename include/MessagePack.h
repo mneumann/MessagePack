@@ -568,25 +568,25 @@ namespace MessagePack
     FileReadBuffer(const char *filename)
     {
       FILE *file = fopen(filename, "r");
-      if (!file) throw new FileException("Failed to open file");
+      if (!file) throw FileException("Failed to open file");
 
       if (fseek(file, 0, SEEK_END) != 0)
       {
         fclose(file);
-	throw new FileException("fseek failed");
+	throw FileException("fseek failed");
       }
 
       long sz = ftell(file);
       if (sz < 0)
       {
         fclose(file);
-	throw new FileException("ftell failed");
+	throw FileException("ftell failed");
       }
 
       if (fseek(file, 0, SEEK_SET) != 0)
       {
         fclose(file);
-	throw new FileException("fseek failed");
+	throw FileException("fseek failed");
       }
 
       _file = file;
@@ -618,7 +618,7 @@ namespace MessagePack
       _pos -= n;
       if (fseek(_file, -n, SEEK_CUR) != 0)
       {
-        throw new FileException("fseek failed");
+        throw FileException("fseek failed");
       }
     }
 
@@ -627,7 +627,7 @@ namespace MessagePack
       needs_bytes(sz);
       if (fread(buffer, sz, 1, _file) != 1)
       {
-        throw new FileException("fread failed");
+        throw FileException("fread failed");
       }
       _pos += sz;
     }
@@ -866,47 +866,35 @@ namespace MessagePack
     }
 
     template <class T>
-    void unpack_unsigned(T &out)
+    void unpack_integer(T &out)
     {
-      uint64_t v;
-      if (read_uint(v))
+      uint64_t u;
+      int64_t s;
+      if (read_uint(u))
       {
-        if (v <= std::numeric_limits<T>::max())
+        if (u >= std::numeric_limits<T>::min() && u <= std::numeric_limits<T>::max())
         {
-          out = v;
+          out = u;
         }
         else
         {
-          throw new InvalidUnpackException("unpack_unsigned: out of range");
+          throw InvalidUnpackException("unpack_integer: out of range");
         }
       }
-      else throw new InvalidUnpackException("unpack_unsigned: no uint given");
-    }
-
-    /* 
-     * unpack_signed also accpets unsigned values, but not the otherway round
-     */
-    template <class T>
-    void unpack_signed(T &out)
-    {
-      int64_t s;
-      if (read_int(s))
+      else if (read_int(s))
       {
         if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
         {
-          out = s;
+          out = u;
         }
         else
         {
-          throw new InvalidUnpackException("unpack_signed: out of range");
+          throw InvalidUnpackException("unpack_integer: out of range");
         }
       }
-      else
-      {
-        unpack_unsigned(out);
-      }
+      else throw InvalidUnpackException("unpack_integer: no integer given");
     }
-
+ 
     bool read_int(int64_t &v)
     {
       Data d;
@@ -1027,42 +1015,42 @@ namespace MessagePack
     {
       uint64_t v;
       if (read_uint(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_uint");
     }
 
     int64_t get_int()
     {
       int64_t v;
       if (read_int(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_int");
     }
 
     bool get_bool()
     {
       bool v;
       if (read_bool(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_bool");
     }
 
     float get_float()
     {
       float v;
       if (read_float(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_float");
     }
 
     double get_double()
     {
       double v;
       if (read_double(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_double");
     }
 
     uint32_t get_raw()
     {
       uint32_t v;
       if (read_raw(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_raw");
     }
 
     /*
@@ -1074,40 +1062,40 @@ namespace MessagePack
       {
         buffer->read(buf, sz);
       }
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_raw_body");
     }
 
     uint32_t get_array()
     {
       uint32_t v;
       if (read_array(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_array");
     }
 
     void get_array(uint32_t expected_size)
     {
       if (get_array() != expected_size)
-        throw new InvalidUnpackException;
+        throw InvalidUnpackException("get_array");
     }
 
     uint32_t get_map()
     {
       uint32_t v;
       if (read_map(v)) return v;
-      else throw new InvalidUnpackException;
+      else throw InvalidUnpackException("get_map");
     }
 
 #ifdef USE_MSGPACK_EXTENSIONS
     void get_array_beg()
     {
       if (!read_array_beg())
-          throw new InvalidUnpackException;
+          throw InvalidUnpackException("get_array_beg");
     }
 
     void get_array_end()
     {
       if (!read_array_end())
-          throw new InvalidUnpackException;
+          throw InvalidUnpackException("get_array_end");
     }
 #endif
 
