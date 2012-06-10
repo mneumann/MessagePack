@@ -18,49 +18,49 @@ namespace MessagePack
 
   inline Unpacker& operator>>(Unpacker &u, uint8_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_unsigned(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, uint16_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_unsigned(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, uint32_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_unsigned(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, uint64_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_unsigned(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, int8_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_signed(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, int16_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_signed(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, int32_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_signed(v);
     return u;
   }
 
   inline Unpacker& operator>>(Unpacker &u, int64_t &v) 
   {
-    u.unpack_integer(v);
+    u.unpack_signed(v);
     return u;
   }
 

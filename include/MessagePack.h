@@ -865,36 +865,62 @@ namespace MessagePack
       return false;
     }
 
+    // T should be an unsigned type!
     template <class T>
-    void unpack_integer(T &out)
+    void unpack_unsigned(T &out)
     {
       uint64_t u;
       int64_t s;
       if (read_uint(u))
       {
-        if (u >= std::numeric_limits<T>::min() && u <= std::numeric_limits<T>::max())
-        {
-          out = u;
-        }
-        else
-        {
-          throw InvalidUnpackException("unpack_integer: out of range");
-        }
       }
       else if (read_int(s))
       {
-        if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
-        {
-          out = u;
-        }
-        else
-        {
-          throw InvalidUnpackException("unpack_integer: out of range");
-        }
+        if (s < 0) throw InvalidUnpackException("unpack_unsigned: negative value");
+        u = (uint64_t)s;
       }
       else
       {
-        throw InvalidUnpackException("unpack_integer: no integer given");
+        throw InvalidUnpackException("unpack_unsigned: no integer given");
+      }
+
+      if (u <= std::numeric_limits<T>::max())
+      {
+        out = (T)u;
+      }
+      else
+      {
+        throw InvalidUnpackException("unpack_unsigned: out of range");
+      }
+    }
+ 
+    // T should be a signed type
+    template <class T>
+    void unpack_signed(T &out)
+    {
+      int64_t s;
+      uint64_t u;
+      if (read_int(s))
+      {
+      }
+      else if (read_uint(u))
+      {
+        if (u > (uint64_t)std::numeric_limits<int64_t>::max())
+          throw InvalidUnpackException("unpack_signed: unsigned value too large");
+        s = (int64_t)u;
+      }
+      else
+      {
+        throw InvalidUnpackException("unpack_signed: no integer given");
+      }
+
+      if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
+      {
+        out = (T)s;
+      }
+      else
+      {
+        throw InvalidUnpackException("unpack_signed: out of range");
       }
     }
  
