@@ -6,6 +6,7 @@
 #include <set>
 #include <map>
 #include <string>
+#include <string.h>
 #include "MessagePack.h"
 
 namespace MessagePack 
@@ -29,6 +30,13 @@ namespace MessagePack
     p.pack_raw(v.c_str(), v.size());
     return p;
   }
+
+  inline Packer& operator<<(Packer& p, const char *v)
+  {
+    p.pack_raw(v, strlen(v));
+    return p;
+  }
+
 
   template <class T>
   Packer& operator<<(Packer& p, const vector<T> &v)
