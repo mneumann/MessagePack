@@ -1,7 +1,7 @@
 require 'MessagePackExt'
 
 module MessagePack
-  def self.include_path
+  def self.__include_path
     File.join(File.basename(__FILE__), "..", "include")
   end
 
