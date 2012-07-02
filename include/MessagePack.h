@@ -23,6 +23,8 @@
 #ifndef __MESSAGEPACK__HEADER__
 #define __MESSAGEPACK__HEADER__
 
+#ifdef __cplusplus
+
 #include <stdint.h>   /* uint32_t ... */
 #include <string.h>   /* memcpy() */
 #include <stdlib.h>   /* malloc() */
@@ -1153,5 +1155,7 @@ namespace MessagePack
   }; /* Unpacker */
 
 }
+
+#endif /* __cplusplus */
 
 #endif
