@@ -1,10 +1,6 @@
 require 'MessagePackExt'
 
 module MessagePack
-  def self.__include_path
-    File.join(File.basename(__FILE__), "..", "include")
-  end
-
   def dump(obj, depth=-1, buf_sz=32)
     _dump(obj, depth || -1, buf_sz)
   end
