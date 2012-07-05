@@ -688,31 +688,35 @@ namespace MessagePack
 
     Unpacker(ReadBuffer *buf) : buffer(buf) { }
 
-    bool can_read(size_t n, Data &data)
+    bool try_read(size_t n, size_t n_unread, Data &data)
     {
-      if (!buffer->can_read(n)) {
+      if (buffer->can_read(n))
+      {
+        return true;
+      }
+      else
+      {
+        if (n_unread > 0)
+        {
+          buffer->unread(n_unread);
+        }
         data.type = MSGPACK_T_NEED_MORE_DATA;
-        data.value.len = n;
+        data.value.len = n + n_unread;
         return false;
       }
-      return true;
     }
 
     /*
-     * Returns the number of bytes required to read the next item.
-     *
-     * On success, return 0.
-     *
+     * Returns the next data item in data.
      */
-    size_t read_next(Data &data)
+    void read_next(Data &data)
     {
-      #define CAN_READ(n, unr) \
-        if (!can_read(n, data)) { \
-          buffer->unread(unr); \
-          return data.value.len+unr; \
-        }
+      #define TRY_READ(n, unr) if (!try_read(n, unr, data)) return;
 
-      if (!can_read(1, data)) return data.value.len;
+      data.type = MSGPACK_T_INVALID;
+
+      TRY_READ(1, 0);
+
       uint8_t c = buffer->read_byte();
       if (c <= 0x7f) {
         data.type = MSGPACK_T_UINT;
@@ -767,84 +771,84 @@ namespace MessagePack
             data.type = MSGPACK_T_TRUE;
             break;
           case 0xca:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_FLOAT;
             data.value.f = buffer->read_float();
             break;
           case 0xcb:
-            CAN_READ(8, 1)
+            TRY_READ(8, 1);
             data.type = MSGPACK_T_DOUBLE;
             data.value.d = buffer->read_double();
             break;
           case 0xcc:
-            CAN_READ(1, 1)
+            TRY_READ(1, 1);
             data.type = MSGPACK_T_UINT;
             data.value.u = buffer->read_byte();
             break;
           case 0xcd:
-            CAN_READ(2, 1)
+            TRY_READ(2, 1);
             data.type = MSGPACK_T_UINT;
             data.value.u = buffer->read2();
             break;
           case 0xce:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_UINT;
             data.value.u = buffer->read4();
             break;
           case 0xcf:
-            CAN_READ(8, 1)
+            TRY_READ(8, 1);
             data.type = MSGPACK_T_UINT;
             data.value.u = buffer->read8();
             break;
           case 0xd0:
-            CAN_READ(1, 1)
+            TRY_READ(1, 1);
             data.type = MSGPACK_T_INT;
             data.value.i = (int8_t)buffer->read_byte();
             break;
           case 0xd1:
-            CAN_READ(2, 1)
+            TRY_READ(2, 1);
             data.type = MSGPACK_T_INT;
             data.value.i = (int16_t)buffer->read2();
             break;
           case 0xd2:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_INT;
             data.value.i = (int32_t)buffer->read4();
             break;
           case 0xd3:
-            CAN_READ(8, 1)
+            TRY_READ(8, 1);
             data.type = MSGPACK_T_INT;
             data.value.i = (int64_t)buffer->read8();
             break;
           case 0xda:
-            CAN_READ(2, 1)
+            TRY_READ(2, 1);
             data.type = MSGPACK_T_RAW;
             data.value.len = buffer->read2();
-            CAN_READ(data.value.len, 2+1)
+            TRY_READ(data.value.len, 2+1);
             break;
           case 0xdb:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_RAW;
             data.value.len = buffer->read4();
-            CAN_READ(data.value.len, 4+1)
+            TRY_READ(data.value.len, 4+1);
             break;
           case 0xdc:
-            CAN_READ(2, 1)
+            TRY_READ(2, 1);
             data.type = MSGPACK_T_ARRAY;
             data.value.len = buffer->read2();
             break;
           case 0xdd:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_ARRAY;
             data.value.len = buffer->read4();
             break;
           case 0xde:
-            CAN_READ(2, 1)
+            TRY_READ(2, 1);
             data.type = MSGPACK_T_MAP;
             data.value.len = buffer->read2();
             break;
           case 0xdf:
-            CAN_READ(4, 1)
+            TRY_READ(4, 1);
             data.type = MSGPACK_T_MAP;
             data.value.len = buffer->read4();
             break;
@@ -852,14 +856,12 @@ namespace MessagePack
             data.type = MSGPACK_T_INVALID;
         };
       }
-
-      return 0;
     }
 
     bool read_uint(uint64_t &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_UINT)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_UINT)
       {
         v = d.value.u;
         return true;
@@ -872,26 +874,19 @@ namespace MessagePack
     void unpack_unsigned(T &out)
     {
       uint64_t u;
-      int64_t s;
 
-      Data d;
-      if (read_next(d) == 0)
+      Data d; read_next(d);
+
+      if (d.type == MSGPACK_T_UINT)
       {
-        if (d.type == MSGPACK_T_UINT)
-        {
-          u = d.value.u;
-        }
-        else if (d.type == MSGPACK_T_INT)
-        {
-          s = d.value.i; 
-          if (s < 0) throw InvalidUnpackException("unpack_unsigned: negative value");
-          u = (uint64_t)s;
-        }
-        else
-        {
-          throw InvalidUnpackException("unpack_unsigned: no integer given");
-        }
-      } 
+        u = d.value.u;
+      }
+      else if (d.type == MSGPACK_T_INT)
+      {
+        int64_t s = d.value.i; 
+        if (s < 0) throw InvalidUnpackException("unpack_unsigned: negative value");
+        u = (uint64_t)s;
+      }
       else
       {
         throw InvalidUnpackException("unpack_unsigned: no integer given");
@@ -912,32 +907,25 @@ namespace MessagePack
     void unpack_signed(T &out)
     {
       int64_t s;
-      uint64_t u;
 
-      Data d;
-      if (read_next(d) == 0)
+      Data d; read_next(d);
+
+      if (d.type == MSGPACK_T_INT)
       {
-        if (d.type == MSGPACK_T_INT)
-        {
-          s = d.value.i;
-        }
-        else if (d.type == MSGPACK_T_UINT)
-        {
-          u = d.value.u;
-          if (u > (uint64_t)std::numeric_limits<int64_t>::max())
-            throw InvalidUnpackException("unpack_signed: unsigned value too large");
-          s = (int64_t)u;
-        }
-        else
-        {
-          throw InvalidUnpackException("unpack_signed: no integer given");
-        }
+        s = d.value.i;
+      }
+      else if (d.type == MSGPACK_T_UINT)
+      {
+        uint64_t u = d.value.u;
+        if (u > (uint64_t)std::numeric_limits<int64_t>::max())
+          throw InvalidUnpackException("unpack_signed: unsigned value too large");
+        s = (int64_t)u;
       }
       else
       {
         throw InvalidUnpackException("unpack_signed: no integer given");
       }
-
+ 
       if (s >= std::numeric_limits<T>::min() && s <= std::numeric_limits<T>::max())
       {
         out = (T)s;
@@ -950,8 +938,8 @@ namespace MessagePack
  
     bool read_int(int64_t &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_INT)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_INT)
       {
         v = d.value.i;
         return true;
@@ -961,8 +949,8 @@ namespace MessagePack
 
     bool read_float(float &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_FLOAT)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_FLOAT)
       {
         v = d.value.f;
         return true;
@@ -972,8 +960,8 @@ namespace MessagePack
 
     bool read_double(double &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_DOUBLE)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_DOUBLE)
       {
         v = d.value.d;
         return true;
@@ -983,8 +971,8 @@ namespace MessagePack
 
     bool read_raw(uint32_t &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_RAW)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_RAW)
       {
         v = d.value.len;
         return true;
@@ -994,6 +982,8 @@ namespace MessagePack
 
     bool read_raw_body(void *buf, size_t sz)
     {
+      if (sz == 0) return true;
+
       if (buffer->can_read(sz))
       {
         buffer->read(buf, sz);
@@ -1004,8 +994,8 @@ namespace MessagePack
 
     bool read_array(uint32_t &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_ARRAY)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_ARRAY)
       {
         v = d.value.len;
         return true;
@@ -1016,8 +1006,8 @@ namespace MessagePack
 #ifdef USE_MSGPACK_EXTENSIONS
     bool read_array_beg()
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_ARRAY_BEG)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_ARRAY_BEG)
       {
         return true;
       }
@@ -1026,8 +1016,8 @@ namespace MessagePack
 
     bool read_array_end()
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_ARRAY_END)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_ARRAY_END)
       {
         return true;
       }
@@ -1037,8 +1027,8 @@ namespace MessagePack
 
     bool read_map(uint32_t &v)
     {
-      Data d;
-      if (read_next(d) == 0 && d.type == MSGPACK_T_MAP)
+      Data d; read_next(d);
+      if (d.type == MSGPACK_T_MAP)
       {
         v = d.value.len;
         return true;
@@ -1048,14 +1038,12 @@ namespace MessagePack
 
     bool read_bool(bool &v)
     {
-      Data d;
-      if (read_next(d) != 0) return false;
+      Data d; read_next(d);
 
       if (d.type == MSGPACK_T_TRUE) {
         v = true;
         return true;
       }
-
       if (d.type == MSGPACK_T_FALSE) {
         v = false;
         return true;

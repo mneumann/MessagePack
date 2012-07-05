@@ -156,11 +156,7 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
   Data d;
 
   success = true;
-  if (uk.read_next(d) != 0)
-  {
-    success = false;
-    return Qnil;
-  }
+  uk.read_next(d);
 
   switch (d.type) {
     case MSGPACK_T_UINT:
@@ -237,6 +233,16 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
       return DBL2NUM((double)d.value.f);
     case MSGPACK_T_DOUBLE:
       return DBL2NUM((double)d.value.d);
+
+    case MSGPACK_T_NEED_MORE_DATA:
+      rb_raise(rb_eArgError, "Need more data");
+      success = false;
+      return Qnil;
+
+    default:
+      rb_raise(rb_eArgError, "Invalid MSGPACK_T data type");
+      success = false;
+      return Qnil;
   }
 
   success = false;
