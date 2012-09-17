@@ -527,6 +527,7 @@ namespace MessagePack
 
     virtual void read(void *buffer, size_t sz)
     {
+      if (sz == 0) return;
       needs_bytes(sz);
       memcpy(buffer, &_data[_pos], sz);
       _pos += sz;
@@ -626,6 +627,7 @@ namespace MessagePack
 
     virtual void read(void *buffer, size_t sz)
     {
+      if (sz == 0) return;
       needs_bytes(sz);
       if (fread(buffer, sz, 1, _file) != 1)
       {
