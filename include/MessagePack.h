@@ -649,8 +649,7 @@ namespace MessagePack
     MSGPACK_T_FLOAT,
     MSGPACK_T_DOUBLE,
     MSGPACK_T_NIL,
-    MSGPACK_T_TRUE,
-    MSGPACK_T_FALSE,
+    MSGPACK_T_BOOL,
     MSGPACK_T_ARRAY,
     MSGPACK_T_MAP,
     MSGPACK_T_RAW,
@@ -667,6 +666,7 @@ namespace MessagePack
   {
     DataType type;
     union {
+      bool     b;
       uint64_t u;
       int64_t  i;
       float    f;
@@ -748,8 +748,6 @@ namespace MessagePack
 #else
           case 0xc4:
           case 0xc5:
-            data.type = MSGPACK_T_RESERVED;
-            break;
 #endif
           case 0xc1:
           case 0xc6:
@@ -765,10 +763,12 @@ namespace MessagePack
             data.type = MSGPACK_T_RESERVED;
             break;
           case 0xc2: 
-            data.type = MSGPACK_T_FALSE;
+            data.type = MSGPACK_T_BOOL;
+            data.value.b = false;
             break;
           case 0xc3:
-            data.type = MSGPACK_T_TRUE;
+            data.type = MSGPACK_T_BOOL;
+            data.value.b = true;
             break;
           case 0xca:
             TRY_READ(4, 1);
@@ -1040,12 +1040,8 @@ namespace MessagePack
     {
       Data d; read_next(d);
 
-      if (d.type == MSGPACK_T_TRUE) {
-        v = true;
-        return true;
-      }
-      if (d.type == MSGPACK_T_FALSE) {
-        v = false;
+      if (d.type == MSGPACK_T_BOOL) {
+        v = d.value.b;
         return true;
       }
 

@@ -165,10 +165,8 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
       return LONG2NUM(d.value.i);
     case MSGPACK_T_NIL:
       return Qnil;
-    case MSGPACK_T_TRUE:
-      return Qtrue;
-    case MSGPACK_T_FALSE:
-      return Qfalse;
+    case MSGPACK_T_BOOL:
+      return (d.value.b ? Qtrue : Qfalse);
     case MSGPACK_T_ARRAY:
       {
         VALUE ary = rb_ary_new2(d.value.len);
