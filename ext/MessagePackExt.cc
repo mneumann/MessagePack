@@ -1,6 +1,4 @@
-#define USE_MSGPACK_EXTENSIONS
-
-#include "MessagePack.h"
+#include "MessagePack/MessagePack.h"
 #include "ruby.h"
 #include "ruby/st.h"
 #include <assert.h>
@@ -13,74 +11,75 @@ static ID to_msgpack_obj;
 static ID to_msgpack;
 static VALUE mMessagePack;
 
-struct hash_iter_ctx
+struct recurse_state
 {
-  MessagePack::Packer *packer;
+  MessagePack::Encoder &encoder;
   int depth;
+
+  recurse_state(MessagePack::Encoder &enc, int dep) : encoder(enc), depth(dep) {}
+
+  recurse_state recurse() const { return recurse_state(encoder, depth-1); }
 };
 
 static int hash_iter(VALUE key, VALUE value, VALUE arg);
 
 static void
-recurse(MessagePack::Packer *t, VALUE obj, int depth)
+recurse(const recurse_state &st, VALUE obj)
 {
-  if (depth == 0)
+  if (st.depth == 0)
     rb_raise(rb_eArgError, "nesting too deep");
 
   switch (TYPE(obj)) {
     case T_NIL:
-      t->pack_nil();
+      st.encoder.emit_nil();
       break;
     case T_TRUE:
-      t->pack_true();
+      st.encoder.emit_true();
       break;
     case T_FALSE:
-      t->pack_false();
+      st.encoder.emit_false();
       break;
     case T_FLOAT:
-      t->pack_double(NUM2DBL(obj));
+      st.encoder.emit_double(NUM2DBL(obj));
       break;
     case T_STRING:
-      t->pack_raw(RSTRING_PTR(obj), RSTRING_LEN(obj));
+      st.encoder.emit_raw(RSTRING_PTR(obj), RSTRING_LEN(obj));
       break;
     case T_SYMBOL:
       {
         // XXX: Can be optimized when no \0 is contained in the symbol
         VALUE str = rb_id2str(SYM2ID(obj));
-        t->pack_raw(RSTRING_PTR(str), RSTRING_LEN(str));
+        st.encoder.emit_raw(RSTRING_PTR(str), RSTRING_LEN(str));
       }
       break;
     case T_ARRAY:
-      t->pack_array(RARRAY_LEN(obj));
+      st.encoder.emit_array(RARRAY_LEN(obj));
       for (size_t i = 0; i < RARRAY_LEN(obj); ++i) {
-        recurse(t, rb_ary_entry(obj, i), depth-1);
+        recurse(st.recurse(), rb_ary_entry(obj, i));
       }
       break;
     case T_HASH:
-      hash_iter_ctx ctx;
-      ctx.packer = t;
-      ctx.depth = depth;
-      t->pack_map(RHASH_SIZE(obj));
-      rb_hash_foreach(obj, (int (*)(ANYARGS))hash_iter, (VALUE)&ctx);
+      st.encoder.emit_map(RHASH_SIZE(obj));
+      rb_hash_foreach(obj, (int (*)(ANYARGS))hash_iter, (VALUE)&st);
       break;
     case T_FIXNUM:
       if (POSFIXABLE(obj))
       {
-        t->pack_uint(FIX2ULONG(obj));
+        st.encoder.emit_uint(FIX2ULONG(obj));
       }
       else
       {
-        t->pack_int(FIX2LONG(obj));
+        st.encoder.emit_int(FIX2LONG(obj));
       }
       break;
     case T_BIGNUM:
       if (RBIGNUM_POSITIVE_P(obj))
       {
-        t->pack_uint(NUM2ULONG(obj));
+        st.encoder.emit_uint(NUM2ULONG(obj));
       }
       else
       {
-        t->pack_int(NUM2LONG(obj));
+        st.encoder.emit_int(NUM2LONG(obj));
       }
       break;
     default:
@@ -90,16 +89,16 @@ recurse(MessagePack::Packer *t, VALUE obj, int depth)
         //
         // Try first method #to_msgpack_obj, which returns an object
         //
-        recurse(t, rb_funcall(obj, to_msgpack_obj, 0), depth-1);
+        recurse(st.recurse(), rb_funcall(obj, to_msgpack_obj, 0));
       }
       else if (rb_respond_to(obj, to_msgpack))
       {
         //
-	// Then try #to_msgpack, which returns a string in msgpack format
-	//
+        // Then try #to_msgpack, which returns a string in msgpack format
+        //
         VALUE str = rb_funcall(obj, to_msgpack, 0);
         Check_Type(str, T_STRING);
-        t->get_buffer()->write(RSTRING_PTR(str), RSTRING_LEN(str));
+        st.encoder.get_writer()->write(RSTRING_PTR(str), RSTRING_LEN(str));
       }
       else
       {
@@ -110,10 +109,10 @@ recurse(MessagePack::Packer *t, VALUE obj, int depth)
 
 static int hash_iter(VALUE key, VALUE value, VALUE arg)
 {
-  hash_iter_ctx *ctx = (hash_iter_ctx*) arg;
+  recurse_state *stp = (recurse_state*) arg;
 
-  recurse(ctx->packer, key, ctx->depth-1);
-  recurse(ctx->packer, value, ctx->depth-1);
+  recurse(stp->recurse(), key);
+  recurse(stp->recurse(), value);
 
   return ST_CONTINUE;
 }
@@ -121,11 +120,17 @@ static int hash_iter(VALUE key, VALUE value, VALUE arg)
 static VALUE
 Packer_s__dump(VALUE self, VALUE obj, VALUE depth, VALUE init_buffer_sz)
 {
-  // depth == -1: infinitively
-  MessagePack::MemoryWriteBuffer buffer(FIX2INT(init_buffer_sz));
-  MessagePack::Packer t(&buffer);
-  recurse(&t, obj, FIX2INT(depth));
-  return rb_str_new((const char*)buffer.data(), buffer.size());
+  try {
+    // depth == -1: infinitively
+    MessagePack::BufferedMemoryWriter writer(FIX2INT(init_buffer_sz));
+    MessagePack::Encoder encoder(&writer);
+    recurse(recurse_state(encoder, FIX2INT(depth)), obj);
+    return rb_str_new((const char*)writer.data(), writer.size());
+  }
+  catch(MessagePack::Exception &e)
+  {
+    rb_raise(rb_eRuntimeError, "Exception: %s", e.msg);
+  }
 }
 
 static VALUE
@@ -136,84 +141,65 @@ Packer_s__dump_to_file(VALUE self, VALUE obj, VALUE filename, VALUE depth)
   // depth == -1: infinitively
 
   FILE *file = fopen(RSTRING_PTR(filename), "w+");
-  if (!file)
+  if (file)
+  {
+    try {
+      MessagePack::FileWriter writer(file);
+      MessagePack::Encoder encoder(&writer);
+      recurse(recurse_state(encoder, FIX2INT(depth)), obj);
+    }
+    catch(MessagePack::Exception &e)
+    {
+      fclose(file);
+      rb_raise(rb_eRuntimeError, "Exception: %s", e.msg);
+    }
+    fclose(file);
+  }
+  else
   {
     rb_raise(rb_eArgError, "Failed to open file %s", RSTRING_PTR(filename));
   }
 
-  MessagePack::FileWriteBuffer buffer(file);
-  MessagePack::Packer t(&buffer);
-  recurse(&t, obj, FIX2INT(depth));
-
-  fclose(file);
   return Qnil;
 }
 
-
-VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
+VALUE unpack_value(MessagePack::Decoder &dec, bool &success, bool *in_dynarray)
 {
   using namespace MessagePack;
-  Data d;
+  DataValue value;
 
   success = true;
-  uk.read_next(d);
 
-  switch (d.type) {
+  switch (dec.read_next(value)) {
     case MSGPACK_T_UINT:
-      return ULONG2NUM(d.value.u);
+      return ULONG2NUM(value.u);
     case MSGPACK_T_INT:
-      return LONG2NUM(d.value.i);
+      return LONG2NUM(value.i);
     case MSGPACK_T_NIL:
       return Qnil;
     case MSGPACK_T_BOOL:
-      return (d.value.b ? Qtrue : Qfalse);
+      return (value.b ? Qtrue : Qfalse);
     case MSGPACK_T_ARRAY:
       {
-        VALUE ary = rb_ary_new2(d.value.len);
-        for (size_t i=0; i < d.value.len; i++)
+        VALUE ary = rb_ary_new2(value.len);
+        for (size_t i=0; i < value.len; i++)
         {
-          rb_ary_store(ary, i, unpack_value(uk, success, NULL));
+          rb_ary_store(ary, i, unpack_value(dec, success, NULL));
           if (!success) return Qnil;
         }
         return ary;
       }
       break;
-#ifdef USE_MSGPACK_EXTENSIONS
-    case MSGPACK_T_ARRAY_BEG:
-      {
-        VALUE ary = rb_ary_new();
-        bool exit_dynarray = false;
-        while (true)
-        {
-          VALUE v = unpack_value(uk, success, &exit_dynarray);
-          if (!success) return Qnil;
-          if (exit_dynarray) return ary; 
-          rb_ary_push(ary, v);
-        }
-      }
-      break;
-    case MSGPACK_T_ARRAY_END:
-      {
-          if (in_dynarray != NULL) {
-              *in_dynarray = true; // notify the end of the dynarray
-          } else {
-              // invalid occurrence of MSGPACK_T_ARRAY_END
-              success = false;
-          }
-          return Qnil;
-      }
-      break;
-#endif
     case MSGPACK_T_MAP:
       {
         VALUE hash = rb_hash_new();
         VALUE key = Qnil;
         VALUE val = Qnil;
-        for (size_t i=0; i < d.value.len; i++)
+        for (size_t i=0; i < value.len; i++)
         {
-          key = unpack_value(uk, success, NULL);
+          key = unpack_value(dec, success, NULL);
           if (!success) return Qnil;
-          val = unpack_value(uk, success, NULL);
+          val = unpack_value(dec, success, NULL);
           if (!success) return Qnil;
           rb_hash_aset(hash, key, val);
         }
@@ -221,24 +207,25 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
       }
     case MSGPACK_T_RAW:
       {
-        VALUE str = rb_str_buf_new(d.value.len);
-        rb_str_set_len(str, d.value.len);
-        assert(RSTRING_LEN(str) == d.value.len);
-        assert(uk.read_raw_body(RSTRING_PTR(str), RSTRING_LEN(str)));
+        VALUE str = rb_str_buf_new(value.len);
+        rb_str_set_len(str, value.len);
+        assert(RSTRING_LEN(str) == value.len);
+        dec.read_raw_body(RSTRING_PTR(str), RSTRING_LEN(str));
         return str;
       }
     case MSGPACK_T_FLOAT:
-      return DBL2NUM((double)d.value.f);
+      return DBL2NUM((double)value.f);
     case MSGPACK_T_DOUBLE:
-      return DBL2NUM((double)d.value.d);
+      return DBL2NUM((double)value.d);
 
-    case MSGPACK_T_NEED_MORE_DATA:
-      rb_raise(rb_eArgError, "Need more data");
+    case MSGPACK_T_RESERVED:
+      rb_raise(rb_eArgError, "Reserved data type");
       success = false;
       return Qnil;
 
+    case MSGPACK_T_INVALID:
     default:
-      rb_raise(rb_eArgError, "Invalid MSGPACK_T data type");
+      rb_raise(rb_eArgError, "Invalid data type");
       success = false;
       return Qnil;
   }
@@ -248,16 +235,14 @@ VALUE unpack_value(MessagePack::Unpacker &uk, bool &success, bool *in_dynarray)
 }
 
 static VALUE
-unpack_each(MessagePack::ReadBuffer *buffer)
+unpack_each(MessagePack::Decoder &dec)
 {
-  MessagePack::Unpacker uk(buffer);
-
   bool success = true; 
   VALUE v = Qnil;
 
-  while (!uk.buffer->at_end())
+  while (!dec.get_reader()->at_end())
   {
-    v = unpack_value(uk, success, NULL);
+    v = unpack_value(dec, success, NULL);
     if (!success)
     {
       return Qfalse;
@@ -269,12 +254,10 @@ unpack_each(MessagePack::ReadBuffer *buffer)
 }
 
 static VALUE
-unpack_load(MessagePack::ReadBuffer *buffer)
+unpack_load(MessagePack::Decoder &dec)
 {
-  MessagePack::Unpacker uk(buffer);
-
   bool success = true;
-  VALUE v = unpack_value(uk, success, NULL);
+  VALUE v = unpack_value(dec, success, NULL);
   if (!success)
     rb_raise(rb_eArgError, "Invalid msgpack string");
   return v;
@@ -284,8 +267,15 @@ static VALUE
 Unpacker_s_each(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
-  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
-  return unpack_each(&buffer);
+  try {
+    MessagePack::MemoryReader reader(RSTRING_PTR(str), RSTRING_LEN(str));
+    MessagePack::Decoder dec(&reader);
+    return unpack_each(dec);
+  }
+  catch(MessagePack::Exception &e)
+  {
+    rb_raise(rb_eRuntimeError, "Exception: %s", e.msg);
+  }
 }
 
 /*
@@ -295,8 +285,15 @@ static VALUE
 Unpacker_s_load(VALUE self, VALUE str)
 {
   Check_Type(str, T_STRING);
-  MessagePack::MemoryReadBuffer buffer(RSTRING_PTR(str), RSTRING_LEN(str));
-  return unpack_load(&buffer);
+  try {
+    MessagePack::MemoryReader reader(RSTRING_PTR(str), RSTRING_LEN(str));
+    MessagePack::Decoder dec(&reader);
+    return unpack_load(dec);
+  }
+  catch(MessagePack::Exception &e)
+  {
+    rb_raise(rb_eRuntimeError, "Exception: %s", e.msg);
+  }
 }
 
 static VALUE
@@ -305,15 +302,15 @@ Unpacker_s_load_from_file(VALUE self, VALUE filename)
   Check_Type(filename, T_STRING);
 
   try {
-    MessagePack::FileReadBuffer buffer(RSTRING_PTR(filename));
-    return unpack_load(&buffer);
+    MessagePack::FileReader reader(RSTRING_PTR(filename));
+    MessagePack::Decoder dec(&reader);
+    return unpack_load(dec);
   }
-  catch(MessagePack::FileException &e)
+  catch(MessagePack::Exception &e)
   {
-    rb_raise(rb_eRuntimeError, "FileException: %s", e.msg);
+    rb_raise(rb_eRuntimeError, "Exception: %s", e.msg);
   }
 }
-
 
 extern "C"
 void Init_MessagePackExt()
