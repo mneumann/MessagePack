@@ -111,13 +111,13 @@ namespace MessagePack
 
   template <int S, typename ...Types> 
   struct _InterleavedEncoder<S, S, Types...> {
-    static void encode(Encoder &enc, const vector<tuple<Types...>> &array) { }
+    static void encode(Encoder &, const vector<tuple<Types...>> &) { }
   };
 
   template <typename ...Types>
   inline void encode_interleaved(Encoder &enc, const vector<tuple<Types...>> &array) {
     _InterleavedEncoder<0, sizeof...(Types), Types...>::encode(enc, array);
-  };
+  }
 
   /* 
    * Encoder for tuples
@@ -133,7 +133,7 @@ namespace MessagePack
 
   template <int S, typename ...Types>
   struct _TupleEncoder<S, S, Types...> {
-    static void encode(Encoder& enc, const tuple<Types...> &tuple) { }
+    static void encode(Encoder& , const tuple<Types...> &) { }
   };
 
   template <typename ...Types>
@@ -309,7 +309,7 @@ namespace MessagePack
 
   template <int S, typename ...Types>
   struct _TupleDecoder<S, S, Types...> {
-    static void decode(Decoder& dec, tuple<Types...> &tuple) { }
+    static void decode(Decoder&, tuple<Types...> &) { }
   };
 
   template <typename ...Types>
@@ -349,6 +349,6 @@ namespace MessagePack
 
   #endif
 
-}; /* namespace MessagePack */
+} /* namespace MessagePack */
 
 #endif
