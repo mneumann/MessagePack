@@ -154,7 +154,15 @@ namespace MessagePack
         case MSGPACK_T_INT:
           if (d.i < 0) throw InvalidDecodeException("unpack_unsigned: negative value");
           break;
-        default:
+	case MSGPACK_T_FLOAT:
+	case MSGPACK_T_DOUBLE:
+	case MSGPACK_T_NIL:
+	case MSGPACK_T_BOOL:
+	case MSGPACK_T_ARRAY:
+	case MSGPACK_T_MAP:
+	case MSGPACK_T_RAW:
+	case MSGPACK_T_RESERVED:
+	case MSGPACK_T_INVALID:
           throw InvalidDecodeException("unpack_unsigned: no integer given");
       }
 
@@ -182,7 +190,15 @@ namespace MessagePack
           if (d.u > (uint64_t)std::numeric_limits<int64_t>::max())
             throw InvalidDecodeException("unpack_signed: unsigned value too large");
           break;
-        default:
+	case MSGPACK_T_FLOAT:
+	case MSGPACK_T_DOUBLE:
+	case MSGPACK_T_NIL:
+	case MSGPACK_T_BOOL:
+	case MSGPACK_T_ARRAY:
+	case MSGPACK_T_MAP:
+	case MSGPACK_T_RAW:
+	case MSGPACK_T_RESERVED:
+	case MSGPACK_T_INVALID:
           throw InvalidDecodeException("unpack_signed: no integer given");
       }
 

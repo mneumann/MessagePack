@@ -14,6 +14,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <boost/numeric/conversion/cast.hpp>
 #endif
 
 
@@ -53,7 +54,7 @@ namespace MessagePack
   Encoder& operator<<(Encoder& p, const vector<T> &v)
   {
     typedef typename vector<T>::const_iterator CI;
-    p.emit_array(v.size());
+    p.emit_array(boost::numeric_cast<unsigned int>(v.size()));
     for (CI it=v.begin(); it != v.end(); ++it)
     {
       p << (*it);
@@ -77,7 +78,7 @@ namespace MessagePack
   Encoder& operator<<(Encoder& p, const map<K, V> &v)
   {
     typedef typename map<K, V>::const_iterator CI;
-    p.emit_map(v.size());
+    p.emit_map(boost::numeric_cast<unsigned int>(v.size()));
     for (CI it=v.begin(); it != v.end(); ++it)
     {
       p << it->first;
@@ -289,7 +290,7 @@ namespace MessagePack
   template <class K, class V>
   inline Decoder& operator>>(Decoder &dec, map<K, V> &v) 
   {
-    for (int sz = dec.read_map(); sz > 0; --sz)
+    for (auto sz = dec.read_map(); sz > 0; --sz)
     {
       K key;
       dec >> key;
