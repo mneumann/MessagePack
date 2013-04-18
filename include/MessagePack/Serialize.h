@@ -40,13 +40,13 @@ namespace MessagePack
 
   inline Encoder& operator<<(Encoder& p, const string &v)
   {
-    p.emit_raw(v.c_str(), v.size());
+    p.emit_raw(v.c_str(), boost::numeric_cast<unsigned int>(v.size()));
     return p;
   }
 
   inline Encoder& operator<<(Encoder& p, const char *v)
   {
-    p.emit_raw(v, strlen(v));
+    p.emit_raw(v, boost::numeric_cast<unsigned int>(strlen(v)));
     return p;
   }
 
@@ -278,7 +278,7 @@ namespace MessagePack
   template <class T>
   inline Decoder& operator>>(Decoder &dec, set<T> &v) 
   {
-    for (int sz = dec.read_array(); sz > 0; --sz)
+    for (auto sz = dec.read_array(); sz > 0; --sz)
     {
       T element;
       dec >> element;

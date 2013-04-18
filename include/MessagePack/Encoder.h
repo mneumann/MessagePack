@@ -1,6 +1,8 @@
 #ifndef __MESSAGEPACK_ENCODER__HEADER__
 #define __MESSAGEPACK_ENCODER__HEADER__
 
+#include<boost/numeric/conversion/cast.hpp>
+
 namespace MessagePack
 {
 
@@ -56,9 +58,10 @@ namespace MessagePack
 
     void emit_uint(uint64_t v)
     {
-      if      ((v & 0xFFFFFFFFFFFFFF00) == 0) emit_uint8(v);
-      else if ((v & 0xFFFFFFFFFFFF0000) == 0) emit_uint16(v);
-      else if ((v & 0xFFFFFFFF00000000) == 0) emit_uint32(v);
+      using boost::numeric_cast;
+      if      ((v & 0xFFFFFFFFFFFFFF00) == 0) emit_uint8(numeric_cast<unsigned char>(v));
+      else if ((v & 0xFFFFFFFFFFFF0000) == 0) emit_uint16(numeric_cast<unsigned short>(v));
+      else if ((v & 0xFFFFFFFF00000000) == 0) emit_uint32(numeric_cast<unsigned int>(v));
       else                                    emit_uint64(v);
     }
 
@@ -77,19 +80,19 @@ namespace MessagePack
     void emit_int16(int16_t v)
     {
       buffer->write_byte(0xd1);
-      buffer->write2(v);
+      buffer->write2(boost::numeric_cast<unsigned short>(v));
     }
 
     void emit_int32(int32_t v)
     {
       buffer->write_byte(0xd2);
-      buffer->write4(v);
+      buffer->write4(boost::numeric_cast<unsigned int>(v));
     }
 
     void emit_int64(int64_t v)
     {
       buffer->write_byte(0xd3);
-      buffer->write8(v);
+      buffer->write8(boost::numeric_cast<unsigned long>(v));
     }
 
     void emit_int(int64_t v)

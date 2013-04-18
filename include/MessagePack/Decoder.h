@@ -66,7 +66,6 @@ namespace MessagePack
         switch (c) {
           case 0xc0:
             return MSGPACK_T_NIL;
-            break;
           case 0xc4:
           case 0xc5:
           case 0xc1:
