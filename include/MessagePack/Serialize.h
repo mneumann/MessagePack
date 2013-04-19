@@ -148,7 +148,7 @@ namespace MessagePack
   template <class T>
   Encoder& operator<<(Encoder& p, const unordered_set<T> &v)
   {
-    p.emit_array(v.size());
+    p.emit_array(boost::numeric_cast<unsigned int>(v.size()));
     for (const auto &elem : v)
     {
       p << v;
@@ -159,7 +159,7 @@ namespace MessagePack
   template <class K, class V>
   Encoder& operator<<(Encoder& p, const unordered_map<K, V> &v)
   {
-    p.emit_map(v.size());
+    p.emit_map(boost::numeric_cast<unsigned int>(v.size()));
     for (const auto &elem : v)
     {
       p << elem.first << elem.second;
