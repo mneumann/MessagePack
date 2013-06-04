@@ -30,7 +30,7 @@
 #ifdef __linux__
   #include <endian.h>
 #elif __APPLE__
-  #include "MessagePack/MacEndian.h"
+  #include "MacEndian.h"
 #else
   #include <sys/endian.h>
 #endif
@@ -41,12 +41,12 @@
   #define nullptr NULL
 #endif
 
-#include "MessagePack/Exception.h"
-#include "MessagePack/ResizableBuffer.h"
-#include "MessagePack/Reader.h"
-#include "MessagePack/Writer.h"
-#include "MessagePack/Encoder.h"
-#include "MessagePack/Decoder.h"
+#include "Exception.h"
+#include "ResizableBuffer.h"
+#include "Reader.h"
+#include "Writer.h"
+#include "Encoder.h"
+#include "Decoder.h"
 
 namespace MessagePack
 {
