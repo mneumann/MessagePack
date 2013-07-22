@@ -1,7 +1,7 @@
 /*
  * Implements the msgpack.org specification.
  *
- * Copyright (c) 2011-2013 by Michael Neumann (mneumann@ntecs.de)
+ * Copyright (c) 2011-2013 by Simpli.fi
  *
  * Why another implementation?
  *
