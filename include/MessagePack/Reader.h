@@ -1,6 +1,8 @@
 #ifndef __MESSAGEPACK_READER__HEADER__
 #define __MESSAGEPACK_READER__HEADER__
 
+#include<boost/numeric/conversion/cast.hpp>
+
 namespace MessagePack
 {
 
@@ -13,6 +15,8 @@ namespace MessagePack
 
     virtual void read(void *buffer, size_t sz) = 0;
     virtual bool at_end() = 0;
+
+    virtual ~Reader(){}
 
     uint8_t read_byte()
     {
@@ -71,6 +75,8 @@ namespace MessagePack
       _size = sz;
       _pos = 0;
     }
+
+    virtual ~MemoryReader() {}
 
     virtual void read(void *buffer, size_t sz)
     {
@@ -138,7 +144,7 @@ namespace MessagePack
       }
 
       _file = file;
-      _size = sz;
+      _size = boost::numeric_cast<size_t>(sz);
       _pos = 0;
       _close_file = true;
     }

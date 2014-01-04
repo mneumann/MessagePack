@@ -14,6 +14,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <boost/numeric/conversion/cast.hpp>
 #endif
 
 
@@ -39,13 +40,13 @@ namespace MessagePack
 
   inline Encoder& operator<<(Encoder& p, const string &v)
   {
-    p.emit_raw(v.c_str(), v.size());
+    p.emit_raw(v.c_str(), boost::numeric_cast<unsigned int>(v.size()));
     return p;
   }
 
   inline Encoder& operator<<(Encoder& p, const char *v)
   {
-    p.emit_raw(v, strlen(v));
+    p.emit_raw(v, boost::numeric_cast<unsigned int>(strlen(v)));
     return p;
   }
 
@@ -53,7 +54,7 @@ namespace MessagePack
   Encoder& operator<<(Encoder& p, const vector<T> &v)
   {
     typedef typename vector<T>::const_iterator CI;
-    p.emit_array(v.size());
+    p.emit_array(boost::numeric_cast<unsigned int>(v.size()));
     for (CI it=v.begin(); it != v.end(); ++it)
     {
       p << (*it);
@@ -77,7 +78,7 @@ namespace MessagePack
   Encoder& operator<<(Encoder& p, const map<K, V> &v)
   {
     typedef typename map<K, V>::const_iterator CI;
-    p.emit_map(v.size());
+    p.emit_map(boost::numeric_cast<unsigned int>(v.size()));
     for (CI it=v.begin(); it != v.end(); ++it)
     {
       p << it->first;
@@ -111,13 +112,13 @@ namespace MessagePack
 
   template <int S, typename ...Types> 
   struct _InterleavedEncoder<S, S, Types...> {
-    static void encode(Encoder &enc, const vector<tuple<Types...>> &array) { }
+    static void encode(Encoder &, const vector<tuple<Types...>> &) { }
   };
 
   template <typename ...Types>
   inline void encode_interleaved(Encoder &enc, const vector<tuple<Types...>> &array) {
     _InterleavedEncoder<0, sizeof...(Types), Types...>::encode(enc, array);
-  };
+  }
 
   /* 
    * Encoder for tuples
@@ -133,7 +134,7 @@ namespace MessagePack
 
   template <int S, typename ...Types>
   struct _TupleEncoder<S, S, Types...> {
-    static void encode(Encoder& enc, const tuple<Types...> &tuple) { }
+    static void encode(Encoder& , const tuple<Types...> &) { }
   };
 
   template <typename ...Types>
@@ -147,7 +148,7 @@ namespace MessagePack
   template <class T>
   Encoder& operator<<(Encoder& p, const unordered_set<T> &v)
   {
-    p.emit_array(v.size());
+    p.emit_array(boost::numeric_cast<unsigned int>(v.size()));
     for (const auto &elem : v)
     {
       p << v;
@@ -158,7 +159,7 @@ namespace MessagePack
   template <class K, class V>
   Encoder& operator<<(Encoder& p, const unordered_map<K, V> &v)
   {
-    p.emit_map(v.size());
+    p.emit_map(boost::numeric_cast<unsigned int>(v.size()));
     for (const auto &elem : v)
     {
       p << elem.first << elem.second;
@@ -277,7 +278,7 @@ namespace MessagePack
   template <class T>
   inline Decoder& operator>>(Decoder &dec, set<T> &v) 
   {
-    for (int sz = dec.read_array(); sz > 0; --sz)
+    for (auto sz = dec.read_array(); sz > 0; --sz)
     {
       T element;
       dec >> element;
@@ -289,7 +290,7 @@ namespace MessagePack
   template <class K, class V>
   inline Decoder& operator>>(Decoder &dec, map<K, V> &v) 
   {
-    for (int sz = dec.read_map(); sz > 0; --sz)
+    for (auto sz = dec.read_map(); sz > 0; --sz)
     {
       K key;
       dec >> key;
@@ -309,7 +310,7 @@ namespace MessagePack
 
   template <int S, typename ...Types>
   struct _TupleDecoder<S, S, Types...> {
-    static void decode(Decoder& dec, tuple<Types...> &tuple) { }
+    static void decode(Decoder&, tuple<Types...> &) { }
   };
 
   template <typename ...Types>
@@ -349,6 +350,6 @@ namespace MessagePack
 
   #endif
 
-}; /* namespace MessagePack */
+} /* namespace MessagePack */
 
 #endif

@@ -24,6 +24,6 @@ module MessagePack
   module_function :to_a
 
   def self.include_path
-    File.join(File.dirname(__FILE__), "../include")
+    File.expand_path(File.join(File.dirname(__FILE__), "../include/MessagePack"))
   end
 end

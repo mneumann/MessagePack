@@ -11,6 +11,8 @@ namespace MessagePack
   {
     public:
 
+    virtual ~Writer() {}
+
     virtual void write_byte(uint8_t byte)
     {
       write(&byte, 1);
@@ -55,9 +57,9 @@ namespace MessagePack
 
     public:
 
-    FileWriter(FILE *file)
+    FileWriter(FILE *file_)
     {
-      this->file = file;
+      this->file = file_;
     }
 
     virtual ~FileWriter()
@@ -86,6 +88,8 @@ namespace MessagePack
       _buf.resize(initial_size);
       _write_pos = 0;
     }
+
+    virtual ~BufferedMemoryWriter(){}
 
     size_t size() const
     {
